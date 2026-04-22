@@ -1,0 +1,14 @@
+[project]
+name = "slides"
+version = "0.1.0"
+authors = [{name = "Your Name", email = "you@example.com"}]
+description = "A uv-based project for slides."
+readme = "README.md"
+requires-python = ">=3.7"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# Add specific uv configurations here
