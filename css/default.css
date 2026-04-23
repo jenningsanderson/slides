@@ -1,0 +1,198 @@
+/* ─── slides-builder default Reveal.js theme ───────────────────────────────
+   Override any variable here or supply your own css/ directory via the
+   css-dir action input to use a custom theme instead.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --accent:        #1d6fe8;
+  --accent-alt:    #0d9488;
+  --accent-2:      #7c3aed;
+  --accent-warm:   #d97706;
+  --accent-green:  #16a34a;
+  --accent-red:    #dc2626;
+
+  --bg-subtle:     #f8fafc;
+  --bg-card:       #f1f5f9;
+  --text-primary:  #0f172a;
+  --text-muted:    #475569;
+  --border:        rgba(0, 0, 0, 0.10);
+  --code-bg:       #1e293b;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+.reveal {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+.reveal .slides section {
+  text-align: left;
+  padding: 1.6rem 2.4rem;
+  height: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Headings ───────────────────────────────────────────────────────────── */
+.reveal h1 {
+  font-size: 2.4em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 0.2em;
+  line-height: 1.1;
+  text-shadow: none;
+}
+
+.reveal h2 {
+  font-size: 1.45em;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.35em;
+  margin-top: 0;
+  line-height: 1.15;
+  border-bottom: 2px solid rgba(29, 111, 232, 0.25);
+  padding-bottom: 0.25em;
+  flex-shrink: 0;
+}
+
+.reveal h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 0.4em;
+  margin-bottom: 0.3em;
+}
+
+.reveal h4 {
+  font-size: 0.82em;
+  font-weight: 600;
+  color: var(--accent-alt);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.4em;
+  margin-top: 0.5em;
+}
+
+/* ─── Body text ──────────────────────────────────────────────────────────── */
+.reveal p {
+  color: var(--text-muted);
+  font-size: 0.78em;
+  line-height: 1.5;
+  margin-bottom: 0.5em;
+}
+
+.reveal p.lead {
+  font-size: 0.82em;
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+
+.reveal ul,
+.reveal ol {
+  font-size: 0.78em;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0.2em 0 0.5em 1.2em;
+}
+
+.reveal li {
+  margin-bottom: 0.2em;
+}
+
+/* ─── Code blocks ────────────────────────────────────────────────────────── */
+.reveal pre {
+  background: var(--code-bg);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  margin: 0.3em 0;
+  width: 100%;
+}
+
+.reveal pre code {
+  font-size: 0.62em;
+  line-height: 1.45;
+  padding: 0.7em 1em;
+}
+
+.reveal code:not(pre code) {
+  background: rgba(29, 111, 232, 0.08);
+  border: 1px solid rgba(29, 111, 232, 0.2);
+  color: var(--accent);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+/* ─── Tables ─────────────────────────────────────────────────────────────── */
+.reveal table {
+  font-size: 0.70em;
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.3em 0;
+}
+
+.reveal table th {
+  background: rgba(29, 111, 232, 0.08);
+  color: var(--accent);
+  text-transform: uppercase;
+  font-size: 0.75em;
+  letter-spacing: 0.06em;
+  padding: 0.3em 0.6em;
+  text-align: left;
+  border-bottom: 1px solid rgba(29, 111, 232, 0.2);
+}
+
+.reveal table td {
+  padding: 0.28em 0.6em;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-muted);
+  vertical-align: top;
+}
+
+.reveal table td:first-child {
+  color: var(--text-primary);
+}
+
+.reveal table td code {
+  font-size: 0.9em;
+}
+
+/* ─── Two-column layout ──────────────────────────────────────────────────── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.5em;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Reveal.js chrome ───────────────────────────────────────────────────── */
+.reveal .slide-number {
+  font-size: 0.65em;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.reveal .controls {
+  color: var(--accent);
+}
+
+.reveal .progress {
+  color: var(--accent);
+  height: 3px;
+}
+
+/* ─── Utility classes ────────────────────────────────────────────────────── */
+.footnote {
+  font-size: 0.65em !important;
+  color: rgba(148, 163, 184, 0.7) !important;
+  font-style: italic;
+  margin-top: 0.5em !important;
+  line-height: 1.4 !important;
+}

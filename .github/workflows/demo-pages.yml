@@ -1,0 +1,56 @@
+# Builds the example slides/ in this repo and deploys them to GitHub Pages
+# as a live demo of the action.
+#
+# View the demo at: https://jenningsanderson.github.io/slides/
+
+name: Deploy Demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'slides/**'
+      - 'css/**'
+      - 'action.yml'
+      - 'build.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build slides (self-referential — action builds its own example)
+        uses: jenningsanderson/slides@main
+        with:
+          slides-dir: slides
+          output-dir: dist
+          title: 'slides-builder demo'
+          base-url: '/slides/'
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

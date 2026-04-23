@@ -1,0 +1,31 @@
+# CI: verify build.py works against the example slides and runs lint/validate.
+
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Build example slides
+        run: uv run python build.py --no-backup
+
+      - name: Print outline
+        run: uv run python build.py --outline
+
+      - name: Validate images
+        run: uv run python build.py --validate-images

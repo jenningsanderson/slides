@@ -1,0 +1,126 @@
+name: 'Build Slides Presentation'
+description: >
+  Convert a slides/ directory of Markdown files into a fully static
+  Reveal.js presentation. Vertical sub-slides, speaker notes, fenced
+  code blocks, and tables are all handled in Python — no Reveal.js
+  markdown plugin required.
+
+branding:
+  icon: 'book-open'
+  color: 'blue'
+
+inputs:
+  slides-dir:
+    description: 'Directory containing slide .md files (relative to repo root)'
+    required: false
+    default: 'slides'
+
+  output-dir:
+    description: 'Output directory for the built presentation'
+    required: false
+    default: 'dist'
+
+  title:
+    description: 'Presentation title shown in the browser tab'
+    required: false
+    default: ''
+
+  base-url:
+    description: >
+      Base URL for asset paths. Set to /<repo-name>/ when deploying to
+      GitHub Pages on a project site (e.g. /my-slides/).
+    required: false
+    default: ''
+
+  css-dir:
+    description: >
+      Path to a directory of custom CSS files to include (relative to
+      repo root). When provided, this replaces the default theme CSS.
+      When omitted, the action's built-in theme is used.
+    required: false
+    default: ''
+
+  assets-dir:
+    description: >
+      Path to an assets directory that will be copied into the output.
+      Defaults to "assets" if that directory exists in your repo.
+    required: false
+    default: 'assets'
+
+  extra-build-args:
+    description: 'Additional arguments forwarded verbatim to build.py'
+    required: false
+    default: ''
+
+outputs:
+  output-dir:
+    description: 'Absolute path to the built presentation directory'
+    value: ${{ steps.resolve-output.outputs.path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve output path
+      id: resolve-output
+      shell: bash
+      run: |
+        echo "path=${{ github.workspace }}/${{ inputs.output-dir }}" >> "$GITHUB_OUTPUT"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: Install Python dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: uv sync --frozen
+
+    - name: Create output directory and copy Reveal.js vendor files
+      shell: bash
+      run: |
+        mkdir -p "${{ github.workspace }}/${{ inputs.output-dir }}"
+        cp -r "${{ github.action_path }}/vendor" \
+              "${{ github.workspace }}/${{ inputs.output-dir }}/vendor"
+
+    - name: Copy CSS (custom or action default)
+      shell: bash
+      run: |
+        CSS_SRC=""
+        if [ -n "${{ inputs.css-dir }}" ] && [ -d "${{ github.workspace }}/${{ inputs.css-dir }}" ]; then
+          CSS_SRC="${{ github.workspace }}/${{ inputs.css-dir }}"
+        elif [ -d "${{ github.workspace }}/css" ]; then
+          CSS_SRC="${{ github.workspace }}/css"
+        else
+          CSS_SRC="${{ github.action_path }}/css"
+        fi
+        cp -r "$CSS_SRC" "${{ github.workspace }}/${{ inputs.output-dir }}/css"
+
+    - name: Copy assets (if present)
+      shell: bash
+      run: |
+        ASSETS="${{ github.workspace }}/${{ inputs.assets-dir }}"
+        if [ -d "$ASSETS" ]; then
+          cp -r "$ASSETS" "${{ github.workspace }}/${{ inputs.output-dir }}/assets"
+        fi
+
+    - name: Build presentation
+      shell: bash
+      run: |
+        ARGS=""
+        if [ -n "${{ inputs.title }}" ]; then
+          ARGS="$ARGS --title ${{ inputs.title }}"
+        fi
+        if [ -n "${{ inputs.base-url }}" ]; then
+          ARGS="$ARGS --base-url ${{ inputs.base-url }}"
+        fi
+        if [ -n "${{ inputs.extra-build-args }}" ]; then
+          ARGS="$ARGS ${{ inputs.extra-build-args }}"
+        fi
+
+        uv run --project "${{ github.action_path }}" \
+          python "${{ github.action_path }}/build.py" \
+          --slides-dir "${{ github.workspace }}/${{ inputs.slides-dir }}" \
+          --output "${{ github.workspace }}/${{ inputs.output-dir }}/index.html" \
+          --no-backup \
+          $ARGS

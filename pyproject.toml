@@ -1,14 +1,12 @@
 [project]
-name = "slides"
+name = "slides-builder"
 version = "0.1.0"
-authors = [{name = "Your Name", email = "you@example.com"}]
-description = "A uv-based project for slides."
+description = "Build Reveal.js presentations from Markdown slides — GitHub Action and local dev tool"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.11"
+dependencies = [
+    "markdown>=3.6",
+]
 
-[build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.uv]
-# Add specific uv configurations here
+[project.urls]
+Repository = "https://github.com/jenningsanderson/slides"
