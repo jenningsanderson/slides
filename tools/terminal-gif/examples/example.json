@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "title": "DuckDB — GERS registry lookup",
+  "command": "python3 examples/demo_script.py",
+  "recorded_at": "2026-04-22T10:02:29.511307+00:00",
+  "total_elapsed": 7.0159,
+  "events": [
+    {
+      "t": 0.0,
+      "type": "input",
+      "text": "python3 examples/demo_script.py"
+    },
+    {
+      "t": 0.0108,
+      "type": "output",
+      "text": "-- Step 1: look up GERS ID in the registry\r\n\r\n"
+    },
+    {
+      "t": 0.4111,
+      "type": "output",
+      "text": "CREATE OR REPLACE TABLE result AS\r\n  SELECT id, theme, type, path, bbox\r\n  FROM read_parquet('s3://overturemaps-us-west-2/registry/*.parquet')\r\n  WHERE id = '379baf1c-d0ab-47e8-b6f6-d9ea16392fb7';\r\n\r\n"
+    },
+    {
+      "t": 2.2111,
+      "type": "output",
+      "text": "FROM result SELECT *;\r\n\r\n"
+    },
+    {
+      "t": 2.7114,
+      "type": "output",
+      "text": "┌──────────────────────────────────────────┬────────┬───────┬──────────────────────────────────────────────────────┐\r\n│ id                                       │ theme  │ type  │ path                                                 │\r\n├──────────────────────────────────────────┼────────┼───────┼──────────────────────────────────────────────────────┤\r\n│ 379baf1c-d0ab-47e8-b6f6-d9ea16392fb7    │ places │ place │ theme=places/type=place/part-00012-abc123.zstd.parquet│\r\n└──────────────────────────────────────────┴────────┴───────┴──────────────────────────────────────────────────────┘\r\n1 row  ·  6.21 s\r\n\r\n"
+    },
+    {
+      "t": 3.3116,
+      "type": "output",
+      "text": "-- Step 2: set variables from the table (no re-scan)\r\n\r\n"
+    },
+    {
+      "t": 3.6119,
+      "type": "output",
+      "text": "SET VARIABLE path = (SELECT path FROM result);\r\n"
+    },
+    {
+      "t": 3.8121,
+      "type": "output",
+      "text": "SET VARIABLE bbox = (SELECT bbox FROM result);\r\n\r\n"
+    },
+    {
+      "t": 4.3122,
+      "type": "output",
+      "text": "-- Step 3: fetch the exact feature using path + bbox as predicates\r\n\r\n"
+    },
+    {
+      "t": 4.7125,
+      "type": "output",
+      "text": "SELECT id, names.primary AS name, categories.primary AS category,\r\n       confidence, addresses[1].freeform AS address\r\nFROM read_parquet('s3://overturemaps-us-west-2/release/2026-04-15.0/'\r\n                  || getvariable('path'))\r\nWHERE id = '379baf1c-d0ab-47e8-b6f6-d9ea16392fb7'\r\n  AND bbox.xmin >= getvariable('bbox').xmin;\r\n\r\n"
+    },
+    {
+      "t": 7.0126,
+      "type": "output",
+      "text": "┌──────────────────────────────────────────┬──────────────────────┬──────────┬────────────┬────────────────────────────┐\r\n│ id                                       │ name                 │ category │ confidence │ address                    │\r\n├──────────────────────────────────────────┼──────────────────────┼──────────┼────────────┼────────────────────────────┤\r\n│ 379baf1c-d0ab-47e8-b6f6-d9ea16392fb7    │ Grand Hotel Baglioni │ hotel    │ 0.9978     │ Piazza dell'Unità Italiana │\r\n└──────────────────────────────────────────┴──────────────────────┴──────────┴────────────┴────────────────────────────┘\r\n1 row  ·  2.31 s\r\n"
+    }
+  ]
+}

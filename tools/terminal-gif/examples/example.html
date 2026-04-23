@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>terminal-player — example</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d1a;
+      color: #c8c8d8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 48px 32px;
+      min-height: 100vh;
+    }
+
+    header {
+      max-width: 960px;
+      margin: 0 auto 48px;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    header p {
+      color: #7878a0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    header a { color: #70b0ff; text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+
+    .badge {
+      display: inline-block;
+      background: #1e1e38;
+      border: 1px solid #3a3a60;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: "Cascadia Code", "Fira Code", monospace;
+      font-size: 0.82rem;
+      color: #a0c8ff;
+      margin-right: 6px;
+    }
+
+    section {
+      max-width: 960px;
+      margin: 0 auto 56px;
+    }
+    section h2 {
+      font-size: 1.1rem;
+      color: #e0e0f0;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    section h2 .tag {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: #2a3a5a;
+      color: #70b0ff;
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+    section .desc {
+      color: #7878a0;
+      font-size: 0.88rem;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    /* JS player container */
+    .player-wrap {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .player-wrap > div {
+      min-height: 320px;
+    }
+
+    /* GIF container */
+    .gif-wrap {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      line-height: 0;
+    }
+    .gif-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Code block */
+    pre.code {
+      background: #12121e;
+      border: 1px solid #2a2a48;
+      border-radius: 8px;
+      padding: 20px 24px;
+      font-family: "Cascadia Code", "Fira Code", "Liberation Mono", monospace;
+      font-size: 0.84rem;
+      line-height: 1.65;
+      color: #b4c8e8;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+    pre.code .kw  { color: #c792ea; }
+    pre.code .str { color: #c3e88d; }
+    pre.code .cm  { color: #546e7a; font-style: italic; }
+    pre.code .fn  { color: #82aaff; }
+    pre.code .at  { color: #ffcb6b; }
+
+    footer {
+      max-width: 960px;
+      margin: 0 auto;
+      padding-top: 32px;
+      border-top: 1px solid #1e1e38;
+      color: #4a4a70;
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>terminal-player.js</h1>
+  <p>
+    A zero-dependency JavaScript library that animates a captured shell session inside a
+    styled <code style="font-family:monospace;color:#a0c8ff">&lt;div&gt;</code> —
+    with <strong style="color:#e0e0f0">fully selectable text</strong>, a live timer, and
+    play/pause/restart controls. Pairs with
+    <span class="badge">terminal-capture</span> (Python recorder) and
+    <span class="badge">terminal-gif</span> (GIF renderer).
+  </p>
+</header>
+
+<!-- ── Section 1: JS Player ─────────────────────────────────────────── -->
+<section>
+  <h2>
+    Interactive HTML player
+    <span class="tag">selectable text</span>
+  </h2>
+  <p class="desc">
+    Loaded from <code style="font-family:monospace;color:#a0c8ff">example.json</code> via
+    <code style="font-family:monospace;color:#a0c8ff">TerminalPlayer.create()</code>.
+    You can select and copy any text directly from the terminal output.
+    Use the ▶ / ⏸ and ↺ buttons in the header to control playback.
+  </p>
+
+  <div class="player-wrap">
+    <div id="js-player"></div>
+  </div>
+
+  <pre class="code"><span class="cm">/* Embed with the JS API */</span>
+<span class="kw">import</span> TerminalPlayer <span class="kw">from</span> <span class="str">'../terminal-player.js'</span>;
+
+TerminalPlayer.<span class="fn">create</span>(<span class="str">'#js-player'</span>, <span class="str">'example.json'</span>, {
+  typingSpeed:     <span class="at">40</span>,     <span class="cm">// ms per character</span>
+  pauseBeforeType: <span class="at">800</span>,    <span class="cm">// ms before typing starts</span>
+  finalHold:       <span class="at">9000</span>,   <span class="cm">// ms to hold on the last frame</span>
+  loop:            <span class="at">true</span>,
+});</pre>
+</section>
+
+<!-- ── Section 2: data-attribute auto-init ───────────────────────────── -->
+<section>
+  <h2>
+    Auto-init via <code style="font-family:monospace;font-size:0.95em">data-terminal-player</code>
+    <span class="tag">zero JS</span>
+  </h2>
+  <p class="desc">
+    No JavaScript required — just add <code style="font-family:monospace;color:#a0c8ff">data-terminal-player</code>
+    to any <code style="font-family:monospace;color:#a0c8ff">&lt;div&gt;</code> and include the script.
+    Useful for static HTML slides or documentation pages.
+  </p>
+
+  <div class="player-wrap">
+    <div data-terminal-player="example.json"
+         data-typing-speed="45"
+         data-pause-before-type="600"
+         data-final-hold="9000"
+         data-loop="true">
+    </div>
+  </div>
+
+  <pre class="code"><span class="cm">&lt;!-- Just add the data attribute — no JS needed --&gt;</span>
+&lt;<span class="kw">div</span> <span class="at">data-terminal-player</span>=<span class="str">"example.json"</span>
+     <span class="at">data-typing-speed</span>=<span class="str">"45"</span>
+     <span class="at">data-final-hold</span>=<span class="str">"9000"</span>
+     <span class="at">data-loop</span>=<span class="str">"true"</span>&gt;&lt;/<span class="kw">div</span>&gt;
+&lt;<span class="kw">script</span> <span class="at">src</span>=<span class="str">"../terminal-player.js"</span>&gt;&lt;/<span class="kw">script</span>&gt;</pre>
+</section>
+
+<!-- ── Section 3: GIF fallback ──────────────────────────────────────── -->
+<section>
+  <h2>
+    Animated GIF fallback
+    <span class="tag">no JS required</span>
+  </h2>
+  <p class="desc">
+    Generated by <span class="badge">terminal-gif</span> from the same command.
+    Use this when embedding in email, Slack, GitHub READMEs, or any context
+    where JavaScript isn't available. Text is not selectable.
+  </p>
+
+  <div class="gif-wrap">
+    <img src="example.gif" alt="DuckDB GERS registry lookup — animated terminal demo">
+  </div>
+
+  <pre class="code"><span class="cm"># Generate a GIF from any shell command</span>
+python3 terminal-gif <span class="str">"python3 examples/demo_script.py"</span> example.gif \
+  --title <span class="str">"DuckDB — GERS registry lookup"</span> \
+  --width <span class="at">1100</span> --height <span class="at">680</span> \
+  --final-hold <span class="at">10</span></pre>
+</section>
+
+<!-- ── Section 4: How to record ─────────────────────────────────────── -->
+<section>
+  <h2>Recording a session</h2>
+  <p class="desc">
+    <span class="badge">terminal-capture</span> runs the command in a real Unix PTY so programs
+    that detect a TTY behave normally. Output chunks are timestamped as they arrive and saved
+    to a JSON file for the player to replay.
+  </p>
+
+  <pre class="code"><span class="cm"># Record any command into a JSON session file</span>
+python3 terminal-capture <span class="str">"duckdb -c 'SELECT 42'"</span> session.json \
+  --title <span class="str">"My DuckDB query"</span>
+
+<span class="cm"># Then embed the player in your HTML</span>
+TerminalPlayer.<span class="fn">create</span>(<span class="str">'#term'</span>, <span class="str">'session.json'</span>);</pre>
+</section>
+
+<footer>
+  Part of the <a href="https://github.com/jenningsanderson/overture-sandbox" style="color:#4a6a9a">overture-sandbox</a>
+  tools — <code style="font-family:monospace">tools/terminal-gif/</code>
+</footer>
+
+<!-- Load the player (path relative to this file in examples/) -->
+<script src="../terminal-player.js"></script>
+<script>
+  TerminalPlayer.create('#js-player', 'example.json', {
+    typingSpeed:     40,
+    pauseBeforeType: 800,
+    pauseAfterType:  500,
+    finalHold:       9000,
+    loop:            true,
+  }).catch(err => {
+    document.getElementById('js-player').textContent = 'Error loading session: ' + err.message;
+  });
+</script>
+
+</body>
+</html>
