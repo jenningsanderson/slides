@@ -1,25 +1,33 @@
 """
 Unified CLI entry point for slides-builder.
 
+Configuration is read from slides/config.yaml (or <slides-dir>/config.yaml).
+CLI flags always take precedence over config file values.
+
+Default layout assumed by the tool:
+  <repo>/
+  ├── slides/
+  │   ├── config.yaml    ← all project settings live here
+  │   ├── css/           ← custom theme (default css_dir)
+  │   ├── 01-intro.md
+  │   └── ...
+  ├── assets/            ← images, JSON sessions, terminal-player.js
+  └── index.html         ← built output
+
 Usage:
-    slides build    [--slides-dir DIR] [--output PATH] [--title TEXT]
-                    [--base-url URL] [--no-backup] [--export-notes PATH]
-                    [--validate-images]
-    slides serve    [--slides-dir DIR] [--output PATH] [--port PORT]
-                    [--title TEXT] [--base-url URL] [--no-open]
+    slides build    [--slides-dir DIR] [--output PATH]
+    slides serve    [--slides-dir DIR] [--port PORT] [--no-open]
     slides outline  [--slides-dir DIR]
     slides lint     [--slides-dir DIR]
-    slides watch    [--slides-dir DIR] [--output PATH] [--title TEXT]
-                    [--base-url URL] [--no-backup]
+    slides watch    [--slides-dir DIR] [--output PATH]
     slides capture  COMMAND output.json [--title TEXT] [--timeout SEC]
-    slides gif      COMMAND output.gif  [--title TEXT] [--width PX]
-                    [--height PX] [--font-size PT] [--final-hold SEC]
-                    [--timeout SEC] [--max-lines N] [--dry-run]
+    slides gif      COMMAND output.gif  [--title TEXT] [options]
 """
 
 import argparse
 import os
 import sys
+from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
@@ -28,8 +36,15 @@ import sys
 
 def _cmd_build(args: argparse.Namespace) -> None:
     from slides_builder import build as b
+    from slides_builder import config as cfg_mod
 
     project_root = os.getcwd()
+    cfg = cfg_mod.load(args.slides_dir)
+
+    title      = cfg_mod.resolve(cfg, "title",      args.title,      "Slides")
+    base_url   = cfg_mod.resolve(cfg, "base_url",   args.base_url,   "")
+    output     = cfg_mod.resolve(cfg, "output",     args.output,     "index.html")
+    no_backup  = cfg_mod.resolve(cfg, "no_backup",  args.no_backup,  False)
 
     sections = b._build_sections(args.slides_dir)
 
@@ -44,14 +59,12 @@ def _cmd_build(args: argparse.Namespace) -> None:
         print(f"All assets found ({len(sections)} slides checked).")
         return
 
-    title = args.title or "Slides"
-    output_html = b.render_index_html(sections, title=title, base_url=args.base_url)
+    output_html = b.render_index_html(sections, title=title, base_url=base_url)
 
-    from pathlib import Path
-    output_path = Path(args.output)
+    output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not args.no_backup and output_path.exists():
+    if not no_backup and output_path.exists():
         backup = output_path.with_suffix(".html.bak")
         backup.write_text(output_path.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -67,14 +80,30 @@ def _cmd_build(args: argparse.Namespace) -> None:
 
 
 def _cmd_serve(args: argparse.Namespace) -> None:
+    from slides_builder import config as cfg_mod
     from slides_builder.serve import run_server
+
+    cfg = cfg_mod.load(args.slides_dir)
+
+    title    = cfg_mod.resolve(cfg, "title",    args.title,    "Slides")
+    base_url = cfg_mod.resolve(cfg, "base_url", args.base_url, "")
+    output   = cfg_mod.resolve(cfg, "output",   args.output,   "index.html")
+    port     = cfg_mod.resolve(cfg, "serve.port" if "serve" in cfg else "port",
+                                getattr(args, "port", None), 3000)
+    no_open  = cfg_mod.resolve(cfg, "no_open",  args.no_open,  False)
+
+    # serve.port nesting
+    if isinstance(cfg.get("serve"), dict):
+        port    = cfg_mod.resolve(cfg["serve"], "port",    getattr(args, "port", None),    3000)
+        no_open = cfg_mod.resolve(cfg["serve"], "no_open", args.no_open, False)
+
     run_server(
         slides_dir=args.slides_dir,
-        output=args.output,
-        port=args.port,
-        no_open=args.no_open,
-        title=args.title or "Slides",
-        base_url=args.base_url,
+        output=output,
+        port=port,
+        no_open=no_open,
+        title=title,
+        base_url=base_url,
     )
 
 
@@ -99,14 +128,23 @@ def _cmd_lint(args: argparse.Namespace) -> None:
 
 def _cmd_watch(args: argparse.Namespace) -> None:
     from slides_builder import build as b
+    from slides_builder import config as cfg_mod
+
     project_root = os.getcwd()
+    cfg = cfg_mod.load(args.slides_dir)
+
+    title     = cfg_mod.resolve(cfg, "title",     args.title,     "Slides")
+    base_url  = cfg_mod.resolve(cfg, "base_url",  args.base_url,  "")
+    output    = cfg_mod.resolve(cfg, "output",    args.output,    "index.html")
+    no_backup = cfg_mod.resolve(cfg, "no_backup", args.no_backup, False)
+
     b.watch_mode(
         slides_dir=args.slides_dir,
-        output=args.output,
+        output=output,
         project_root=project_root,
-        no_backup=args.no_backup,
-        title=args.title or "Slides",
-        base_url=args.base_url,
+        no_backup=no_backup,
+        title=title,
+        base_url=base_url,
     )
 
 
@@ -114,11 +152,8 @@ def _cmd_capture(args: argparse.Namespace) -> None:
     try:
         from slides_builder.tools.terminal_capture import run_and_capture
     except ImportError as e:
-        sys.exit(
-            f"Import error: {e}\n"
-            "The 'capture' command has no extra requirements beyond the standard library."
-        )
-    import json
+        sys.exit(f"Import error: {e}")
+    import json, os as _os
 
     title = args.title or args.command
     print(f"Running: {args.command}")
@@ -127,7 +162,6 @@ def _cmd_capture(args: argparse.Namespace) -> None:
 
     print(f"Captured {len(session['events'])} events in {session['total_elapsed']:.2f}s")
 
-    import os as _os
     _os.makedirs(_os.path.dirname(_os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(session, f, indent=2, ensure_ascii=False)
@@ -182,34 +216,34 @@ def _cmd_gif(args: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Shared argument groups
+# Shared argument helpers
 # ---------------------------------------------------------------------------
 
-def _add_slides_dir(p: argparse.ArgumentParser, default: str = "slides") -> None:
+def _add_slides_dir(p: argparse.ArgumentParser) -> None:
     p.add_argument(
-        "--slides-dir", default=default, metavar="DIR",
-        help=f"directory containing slide files (default: {default})",
+        "--slides-dir", default="slides", metavar="DIR",
+        help="directory containing slide files, and config.yaml (default: slides)",
     )
 
 
-def _add_output(p: argparse.ArgumentParser, default: str = "index.html") -> None:
+def _add_output(p: argparse.ArgumentParser) -> None:
     p.add_argument(
-        "--output", default=default, metavar="PATH",
-        help=f"output HTML file (default: {default})",
+        "--output", default="", metavar="PATH",
+        help="output HTML file; overrides config.yaml (default: index.html)",
     )
 
 
 def _add_title(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--title", default="", metavar="TEXT",
-        help="presentation title shown in the browser tab (default: Slides)",
+        help="presentation title; overrides config.yaml",
     )
 
 
 def _add_base_url(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--base-url", default="", metavar="URL",
-        help="set <base href> for subdirectory deploys (e.g. /my-repo/)",
+        help="set <base href> for subdirectory deploys; overrides config.yaml",
     )
 
 
@@ -223,6 +257,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Build and serve Reveal.js presentations from Markdown.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Config file: slides/config.yaml (created automatically on first run if absent)
+
 commands:
   build    Render slides to index.html
   serve    Live-reload dev server (default: http://localhost:3000)
@@ -234,11 +270,9 @@ commands:
 
 examples:
   slides build
-  slides build --title "My Talk" --output dist/index.html
-  slides serve --port 8080
+  slides serve
   slides outline
   slides lint
-  slides watch
   slides capture "ls -lh" assets/demo.json --title "ls demo"
   slides gif "python3 demo.py" assets/demo.gif --final-hold 10
         """,
@@ -267,8 +301,8 @@ examples:
     _add_output(sp)
     _add_title(sp)
     _add_base_url(sp)
-    sp.add_argument("--port", type=int, default=3000,
-                    help="port to listen on (default: 3000)")
+    sp.add_argument("--port", type=int, default=0,
+                    help="port to listen on; overrides config.yaml (default: 3000)")
     sp.add_argument("--no-open", action="store_true",
                     help="do not open the browser automatically")
     sp.set_defaults(func=_cmd_serve)
@@ -301,7 +335,7 @@ examples:
     cp.add_argument("command", help="shell command to run")
     cp.add_argument("output", help="output .json path")
     cp.add_argument("--title", default=None,
-                    help="title shown in the terminal header (default: the command)")
+                    help="title in the terminal header (default: the command)")
     cp.add_argument("--timeout", type=float, default=120.0,
                     help="max seconds to wait for the command (default: 120)")
     cp.set_defaults(func=_cmd_capture)
@@ -309,32 +343,21 @@ examples:
     # ── gif ──────────────────────────────────────────────────────────────────
     gp = sub.add_parser(
         "gif",
-        help="record a shell command and render an animated GIF (requires --extra terminal)",
+        help="record a shell command and render an animated GIF",
     )
     gp.add_argument("command", help="shell command to run")
     gp.add_argument("output", help="output .gif path")
-    gp.add_argument("--title", default=None,
-                    help="title in the terminal header bar (default: the command)")
-    gp.add_argument("--width", type=int, default=1100,
-                    help="canvas width in pixels (default: 1100)")
-    gp.add_argument("--height", type=int, default=660,
-                    help="canvas height in pixels (default: 660)")
-    gp.add_argument("--font-size", type=int, default=17,
-                    help="font size in points (default: 17)")
-    gp.add_argument("--timer-ticks", type=int, default=8,
-                    help="number of timer tick frames during execution (default: 8)")
-    gp.add_argument("--pause-before", type=float, default=1.0,
-                    help="seconds to hold on empty terminal before command (default: 1.0)")
-    gp.add_argument("--pause-after-cmd", type=float, default=1.5,
-                    help="seconds to hold on the prompt before execution (default: 1.5)")
-    gp.add_argument("--final-hold", type=float, default=10.0,
-                    help="seconds to hold on the final output frame (default: 10.0)")
-    gp.add_argument("--timeout", type=float, default=120.0,
-                    help="max seconds to wait for the command (default: 120)")
-    gp.add_argument("--max-lines", type=int, default=30,
-                    help="max lines to keep on screen (default: 30)")
-    gp.add_argument("--dry-run", action="store_true",
-                    help="skip execution; render a placeholder frame for layout testing")
+    gp.add_argument("--title", default=None)
+    gp.add_argument("--width",          type=int,   default=1100)
+    gp.add_argument("--height",         type=int,   default=660)
+    gp.add_argument("--font-size",      type=int,   default=17)
+    gp.add_argument("--timer-ticks",    type=int,   default=8)
+    gp.add_argument("--pause-before",   type=float, default=1.0)
+    gp.add_argument("--pause-after-cmd",type=float, default=1.5)
+    gp.add_argument("--final-hold",     type=float, default=10.0)
+    gp.add_argument("--timeout",        type=float, default=120.0)
+    gp.add_argument("--max-lines",      type=int,   default=30)
+    gp.add_argument("--dry-run",        action="store_true")
     gp.set_defaults(func=_cmd_gif)
 
     return root

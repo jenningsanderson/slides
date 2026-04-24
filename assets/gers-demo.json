@@ -1,0 +1,279 @@
+{
+  "version": 1,
+  "title": "Overture Maps — GERS lookup",
+  "command": "python3 demos/gers_demo.py",
+  "recorded_at": "2026-04-24T18:07:40.731921+00:00",
+  "total_elapsed": 5.0259,
+  "events": [
+    {
+      "t": 0.0,
+      "type": "input",
+      "text": "python3 demos/gers_demo.py"
+    },
+    {
+      "t": 0.0224,
+      "type": "output",
+      "text": "$ overturemaps gers 08f2832a30d4001703ef25b69c4af924\r\n"
+    },
+    {
+      "t": 1.2226,
+      "type": "output",
+      "text": "Found GERS ID '08f2832a30d4001703ef25b69c4af924' in release 2026-04-15.0\r\n  Version:     47\r\n  Filepath:    s3://overturemaps-us-west-2/release/2026-04-15.0/theme=places/type=place/part-00089-5e5a3e5f.c000.parquet\r\n  Bbox:        [-122.419463, 37.774842, -122.419463, 37.774842]\r\n  First seen:  2023-07-26.0\r\n  Last seen:   2026-04-15.0\r\n\r\nRegistry lookup complete for GERS ID: 08f2832a30d4001703ef25b69c4af924\r\nTo download the feature data, use -f/--format option.\r\n"
+    },
+    {
+      "t": 2.6228,
+      "type": "output",
+      "text": "$ overturemaps gers 08f2832a30d4001703ef25b69c4af924 -f geojson\r\n"
+    },
+    {
+      "t": 4.4238,
+      "type": "output",
+      "text": "{\r\n"
+    },
+    {
+      "t": 4.4357,
+      "type": "output",
+      "text": "  \"type\": \"Feature\",\r\n"
+    },
+    {
+      "t": 4.4477,
+      "type": "output",
+      "text": "  \"id\": \"08f2832a30d4001703ef25b69c4af924\",\r\n"
+    },
+    {
+      "t": 4.46,
+      "type": "output",
+      "text": "  \"geometry\": {\r\n"
+    },
+    {
+      "t": 4.4721,
+      "type": "output",
+      "text": "    \"type\": \"Point\",\r\n"
+    },
+    {
+      "t": 4.4847,
+      "type": "output",
+      "text": "    \"coordinates\": [\r\n"
+    },
+    {
+      "t": 4.4964,
+      "type": "output",
+      "text": "      -122.419463,\r\n"
+    },
+    {
+      "t": 4.5086,
+      "type": "output",
+      "text": "      37.774842\r\n"
+    },
+    {
+      "t": 4.5207,
+      "type": "output",
+      "text": "    ]\r\n"
+    },
+    {
+      "t": 4.5329,
+      "type": "output",
+      "text": "  },\r\n"
+    },
+    {
+      "t": 4.545,
+      "type": "output",
+      "text": "  \"properties\": {\r\n"
+    },
+    {
+      "t": 4.5572,
+      "type": "output",
+      "text": "    \"id\": \"08f2832a30d4001703ef25b69c4af924\",\r\n"
+    },
+    {
+      "t": 4.5693,
+      "type": "output",
+      "text": "    \"version\": 47,\r\n"
+    },
+    {
+      "t": 4.5814,
+      "type": "output",
+      "text": "    \"updatetime\": \"2026-04-01T00:00:00\",\r\n"
+    },
+    {
+      "t": 4.5941,
+      "type": "output",
+      "text": "    \"names\": {\r\n"
+    },
+    {
+      "t": 4.6057,
+      "type": "output",
+      "text": "      \"primary\": \"Blue Bottle Coffee\",\r\n"
+    },
+    {
+      "t": 4.6179,
+      "type": "output",
+      "text": "      \"common\": null\r\n"
+    },
+    {
+      "t": 4.63,
+      "type": "output",
+      "text": "    },\r\n"
+    },
+    {
+      "t": 4.6422,
+      "type": "output",
+      "text": "    \"categories\": {\r\n"
+    },
+    {
+      "t": 4.6543,
+      "type": "output",
+      "text": "      \"primary\": \"coffee_shop\",\r\n"
+    },
+    {
+      "t": 4.6664,
+      "type": "output",
+      "text": "      \"alternate\": [\r\n"
+    },
+    {
+      "t": 4.6786,
+      "type": "output",
+      "text": "        \"cafe\",\r\n"
+    },
+    {
+      "t": 4.6907,
+      "type": "output",
+      "text": "        \"food_and_drink\"\r\n"
+    },
+    {
+      "t": 4.7029,
+      "type": "output",
+      "text": "      ]\r\n"
+    },
+    {
+      "t": 4.7151,
+      "type": "output",
+      "text": "    },\r\n"
+    },
+    {
+      "t": 4.7277,
+      "type": "output",
+      "text": "    \"confidence\": 0.9523,\r\n"
+    },
+    {
+      "t": 4.7394,
+      "type": "output",
+      "text": "    \"addresses\": [\r\n"
+    },
+    {
+      "t": 4.7515,
+      "type": "output",
+      "text": "      {\r\n"
+    },
+    {
+      "t": 4.7637,
+      "type": "output",
+      "text": "        \"freeform\": \"66 Mint St\",\r\n"
+    },
+    {
+      "t": 4.7758,
+      "type": "output",
+      "text": "        \"locality\": \"San Francisco\",\r\n"
+    },
+    {
+      "t": 4.7879,
+      "type": "output",
+      "text": "        \"postcode\": \"94103\",\r\n"
+    },
+    {
+      "t": 4.8001,
+      "type": "output",
+      "text": "        \"region\": \"CA\",\r\n"
+    },
+    {
+      "t": 4.8123,
+      "type": "output",
+      "text": "        \"country\": \"US\"\r\n"
+    },
+    {
+      "t": 4.8244,
+      "type": "output",
+      "text": "      }\r\n"
+    },
+    {
+      "t": 4.8365,
+      "type": "output",
+      "text": "    ],\r\n"
+    },
+    {
+      "t": 4.8487,
+      "type": "output",
+      "text": "    \"phones\": [\r\n"
+    },
+    {
+      "t": 4.8609,
+      "type": "output",
+      "text": "      \"+1 510-653-3394\"\r\n"
+    },
+    {
+      "t": 4.873,
+      "type": "output",
+      "text": "    ],\r\n"
+    },
+    {
+      "t": 4.8852,
+      "type": "output",
+      "text": "    \"websites\": [\r\n"
+    },
+    {
+      "t": 4.8993,
+      "type": "output",
+      "text": "      \"https://bluebottlecoffee.com\"\r\n"
+    },
+    {
+      "t": 4.9114,
+      "type": "output",
+      "text": "    ],\r\n"
+    },
+    {
+      "t": 4.9236,
+      "type": "output",
+      "text": "    \"brand\": {\r\n"
+    },
+    {
+      "t": 4.936,
+      "type": "output",
+      "text": "      \"names\": {\r\n"
+    },
+    {
+      "t": 4.9482,
+      "type": "output",
+      "text": "        \"primary\": \"Blue Bottle Coffee\"\r\n"
+    },
+    {
+      "t": 4.9604,
+      "type": "output",
+      "text": "      },\r\n"
+    },
+    {
+      "t": 4.9726,
+      "type": "output",
+      "text": "      \"wikidata\": \"Q2945685\"\r\n"
+    },
+    {
+      "t": 4.9848,
+      "type": "output",
+      "text": "    }\r\n"
+    },
+    {
+      "t": 4.9969,
+      "type": "output",
+      "text": "  }\r\n"
+    },
+    {
+      "t": 5.009,
+      "type": "output",
+      "text": "}\r\n"
+    },
+    {
+      "t": 5.0213,
+      "type": "output",
+      "text": "\r\n1 feature · 2026-04-15.0 · 2.1s\r\n"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+# slides-builder configuration
+# All paths are relative to the repository root.
+
+title: slides-builder demo
+# base_url: /slides/        # uncomment for GitHub Pages project sites
+
+# Output location
+output: index.html
+
+# CSS directory — defaults to slides/css/ (alongside your slide files)
+# css_dir: slides/css
+
+# Assets directory — defaults to assets/ (repo root)
+# assets_dir: assets
+
+# Dev server settings
+serve:
+  port: 3000
+  no_open: false

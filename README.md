@@ -100,9 +100,21 @@ Embed the interactive player in a slide:
 
 ---
 
+## Config file
+
+Project settings live in `slides/config.yaml` alongside your slides:
+
+```yaml
+title: My Presentation
+# base_url: /my-repo/   # for GitHub Pages project sites
+output: index.html
+serve:
+  port: 3000
+```
+
 ## Custom theme
 
-Place any `.css` files in a `css/` directory — the action picks them up automatically, falling back to the built-in `css/default.css` if none exist.
+Place CSS files in `slides/css/` — right alongside your slide files. The action picks them up automatically, falling back to the built-in theme if none exist.
 
 ---
 

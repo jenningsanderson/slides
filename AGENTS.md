@@ -27,6 +27,7 @@ slides-builder/
 │   ├── build.py                ← core build logic (no CLI)
 │   ├── serve.py                ← live-reload dev server
 │   ├── cli.py                  ← unified entry point: `slides <command>`
+│   ├── config.py               ← config.yaml loader and resolver
 │   └── tools/
 │       ├── terminal_capture.py ← `slides capture` implementation
 │       └── terminal_gif.py     ← `slides gif` implementation (needs Pillow + numpy)
@@ -35,13 +36,18 @@ slides-builder/
 │   ├── AGENTS.md               ← terminal-gif-specific agent instructions
 │   └── examples/               ← example .json, .gif, .html
 ├── slides/                     ← example presentation (Markdown source)
-├── css/
-│   └── default.css             ← built-in Reveal.js theme overrides
-├── assets/
-│   └── terminal-player.js      ← copy of terminal-player.js for demo deployment
+│   ├── config.yaml             ← project config (title, output, css_dir, etc.)
+│   ├── css/
+│   │   └── default.css         ← built-in Reveal.js theme overrides
+│   ├── 01-title.md
+│   └── ...
+├── assets/                     ← images, JSON sessions, terminal-player.js
+│   ├── terminal-player.js      ← copy of terminal-player.js for demo deployment
+│   ├── gers-demo.json          ← captured terminal session
+│   └── gers-demo.gif           ← animated GIF fallback
+├── demos/                      ← scripted demo scripts for terminal capture
+│   └── gers_demo.py
 ├── vendor/                     ← vendored Reveal.js 5.1.0 + highlight.js
-│   ├── reveal.js/
-│   └── highlight.js/
 ├── .github/workflows/
 │   ├── ci.yml                  ← build + outline + validate on push
 │   └── demo-pages.yml          ← deploys slides/ to GitHub Pages as live demo
@@ -87,11 +93,53 @@ slides gif      COMMAND output.gif  [--title TEXT] [--width PX] [--height PX]
 
 **Defaults:**
 - `--slides-dir` → `slides`
-- `--output` → `index.html`
-- `--port` → `3000`
+- `--output` → `index.html` (overridden by config.yaml)
+- `--port` → `3000` (overridden by config.yaml `serve.port`)
 - `--final-hold` → `10.0` (seconds)
 - `--width` / `--height` → `1100` / `660`
 - `--font-size` → `17`
+
+CLI flags always take precedence over `config.yaml`.
+
+---
+
+## config.yaml
+
+Each project's settings live in `<slides-dir>/config.yaml` (e.g. `slides/config.yaml`).
+The file is optional — all keys have sensible defaults.
+
+```yaml
+# slides/config.yaml
+
+title: My Presentation
+# base_url: /my-repo/        # only needed for GitHub Pages project sites
+
+output: index.html            # where to write the built HTML
+
+# CSS: default is slides/css/ (alongside your slide files)
+# css_dir: slides/css
+
+# Assets: default is assets/ at the repo root
+# assets_dir: assets
+
+serve:
+  port: 3000
+  no_open: false
+```
+
+**Resolution order** (highest to lowest priority):
+1. CLI flag (e.g. `--title "..."`)
+2. `config.yaml` value
+3. Built-in default
+
+**CSS resolution order** (both locally and in the action):
+1. `<slides-dir>/css/` (new default — lives alongside slide files)
+2. `css/` at the repo root (legacy fallback)
+3. Built-in `slides/css/default.css` from the action itself
+
+The `config.py` module handles loading and resolution. Key functions:
+- `config.load(slides_dir)` → returns the parsed dict (empty dict if no config.yaml)
+- `config.resolve(cfg, key, cli_value, default)` → applies the priority chain
 
 ---
 
@@ -276,13 +324,15 @@ extracts `<section>` elements from them directly without markdown processing.
 
 ### How CSS is resolved (both locally and in the action)
 
-1. If `--css-dir` (action: `css-dir`) is set and the directory exists → use it
-2. Else if `css/` exists in the working/workspace directory → use it
-3. Else → use the action's built-in `css/default.css`
+1. `<slides-dir>/css/` — **default**: lives alongside slide files (e.g. `slides/css/`)
+2. `css/` at the repo root — legacy fallback
+3. Built-in `slides/css/default.css` from the action itself
 
 The chosen directory is copied to `output-dir/css/`. The HTML template loads `css/default.css`
-(the filename is hardcoded in the template — rename your file to `default.css` or add it
+(the filename is hardcoded in the template — name your file `default.css` or add it
 alongside the existing one).
+
+To override via `config.yaml`: set `css_dir: path/to/css`.
 
 ### Assets directory
 `assets/` (configurable via `--assets-dir` / `assets-dir`) is copied to `output-dir/assets/`
@@ -301,19 +351,21 @@ The action is a **composite** action. Steps in order:
 2. Install uv via `astral-sh/setup-uv@v5`
 3. `uv sync --frozen` (from the action's own directory)
 4. `mkdir -p output-dir && cp -r vendor/ output-dir/vendor/`
-5. Copy CSS (priority: `css-dir` input → `css/` in workspace → action's `css/`)
+5. Copy CSS (priority: `<slides-dir>/css/` → `css/` at repo root → action's `slides/css/`)
 6. Copy `assets/` if it exists
 7. `uv run slides build --slides-dir ... --output ... --no-backup [extra args]`
+
+The tool reads `<slides-dir>/config.yaml` automatically. Action inputs act as overrides.
+Most settings (title, output, serve port) belong in `config.yaml` rather than action inputs.
 
 ### Action inputs
 
 | Input | Default | Notes |
 |---|---|---|
-| `slides-dir` | `slides` | Relative to `$GITHUB_WORKSPACE` |
+| `slides-dir` | `slides` | Relative to `$GITHUB_WORKSPACE`; `config.yaml` is read from here |
 | `output-dir` | `dist` | Relative to `$GITHUB_WORKSPACE` |
-| `title` | _(empty → "Slides")_ | Passed as `--title` |
+| `title` | _(empty)_ | Overrides `config.yaml` title |
 | `base-url` | _(empty)_ | Only needed for project Pages sites at `/repo-name/` |
-| `css-dir` | _(auto)_ | Override CSS lookup |
 | `assets-dir` | `assets` | Copied to `output-dir/assets/` if present |
 | `extra-build-args` | _(empty)_ | Appended verbatim to `slides build` |
 

@@ -1,9 +1,8 @@
 name: 'Build Slides Presentation'
 description: >
   Convert a slides/ directory of Markdown files into a fully static
-  Reveal.js presentation. Vertical sub-slides, speaker notes, fenced
-  code blocks, and tables are all handled in Python — no Reveal.js
-  markdown plugin required.
+  Reveal.js presentation. Configuration is read from slides/config.yaml;
+  action inputs act as overrides.
 
 branding:
   icon: 'book-open'
@@ -11,7 +10,7 @@ branding:
 
 inputs:
   slides-dir:
-    description: 'Directory containing slide .md files (relative to repo root)'
+    description: 'Directory containing slide .md files and config.yaml (relative to repo root)'
     required: false
     default: 'slides'
 
@@ -21,28 +20,21 @@ inputs:
     default: 'dist'
 
   title:
-    description: 'Presentation title shown in the browser tab'
+    description: 'Presentation title — overrides config.yaml'
     required: false
     default: ''
 
   base-url:
     description: >
-      Base URL for asset paths. Set to /<repo-name>/ when deploying to
-      GitHub Pages on a project site (e.g. /my-slides/).
-    required: false
-    default: ''
-
-  css-dir:
-    description: >
-      Path to a directory of custom CSS files (relative to repo root).
-      Falls back to css/ in the repo root, then the action's built-in theme.
+      Base URL for asset paths. Set to /<repo-name>/ for GitHub Pages project
+      sites. Overrides config.yaml.
     required: false
     default: ''
 
   assets-dir:
     description: >
-      Path to an assets directory that will be copied into the output.
-      Defaults to "assets" if that directory exists in your repo.
+      Assets directory copied into the output. Defaults to "assets/" at the
+      repo root if present. Overrides config.yaml.
     required: false
     default: 'assets'
 
@@ -82,17 +74,19 @@ runs:
         cp -r "${{ github.action_path }}/vendor" \
               "${{ github.workspace }}/${{ inputs.output-dir }}/vendor"
 
-    - name: Copy CSS (custom repo css/ > action default)
+    - name: Copy CSS (slides/css/ > repo root css/ > action default)
       shell: bash
       run: |
-        CSS_SRC=""
-        if [ -n "${{ inputs.css-dir }}" ] && \
-           [ -d "${{ github.workspace }}/${{ inputs.css-dir }}" ]; then
-          CSS_SRC="${{ github.workspace }}/${{ inputs.css-dir }}"
-        elif [ -d "${{ github.workspace }}/css" ]; then
-          CSS_SRC="${{ github.workspace }}/css"
+        SLIDES_CSS="${{ github.workspace }}/${{ inputs.slides-dir }}/css"
+        ROOT_CSS="${{ github.workspace }}/css"
+        ACTION_CSS="${{ github.action_path }}/slides/css"
+
+        if [ -d "$SLIDES_CSS" ]; then
+          CSS_SRC="$SLIDES_CSS"
+        elif [ -d "$ROOT_CSS" ]; then
+          CSS_SRC="$ROOT_CSS"
         else
-          CSS_SRC="${{ github.action_path }}/css"
+          CSS_SRC="$ACTION_CSS"
         fi
         cp -r "$CSS_SRC" "${{ github.workspace }}/${{ inputs.output-dir }}/css"
 
@@ -107,7 +101,7 @@ runs:
     - name: Build presentation
       shell: bash
       run: |
-        ARGS=()
+        ARGS=(--no-backup)
         if [ -n "${{ inputs.title }}" ]; then
           ARGS+=(--title "${{ inputs.title }}")
         fi
@@ -121,5 +115,4 @@ runs:
         uv run --project "${{ github.action_path }}" slides build \
           --slides-dir "${{ github.workspace }}/${{ inputs.slides-dir }}" \
           --output "${{ github.workspace }}/${{ inputs.output-dir }}/index.html" \
-          --no-backup \
           "${ARGS[@]}"
