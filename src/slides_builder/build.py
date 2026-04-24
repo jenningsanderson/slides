@@ -108,7 +108,7 @@ _RENDERER: md_lib.Markdown | None = None
 
 def _make_renderer() -> md_lib.Markdown:
     return md_lib.Markdown(
-        extensions=["tables", "fenced_code", "md_in_html"],
+        extensions=["tables", "fenced_code"],
         extension_configs={"fenced_code": {"lang_prefix": "language-"}},
     )
 
@@ -119,6 +119,27 @@ def render_markdown(content: str) -> str:
         _RENDERER = _make_renderer()
     _RENDERER.reset()
     return _RENDERER.convert(content)
+
+
+_MD_IN_HTML_RE = re.compile(
+    r'<(\w+)([^>]*)markdown=["\']1["\']([^>]*)>(.*?)</\1>',
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _replace_md_block(m: re.Match) -> str:
+    tag = m.group(1)
+    before = m.group(2).strip()
+    after = m.group(3).strip()
+    inner = m.group(4)
+    attrs = (before + " " + after).strip()
+    open_tag = f'<{tag} {attrs}>' if attrs else f'<{tag}>'
+    return f'{open_tag}\n{render_markdown(inner.strip())}\n</{tag}>'
+
+
+def preprocess_markdown_in_html(content: str) -> str:
+    """Render markdown inside <tag markdown="1">...</tag> blocks before the main pass."""
+    return _MD_IN_HTML_RE.sub(_replace_md_block, content)
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +289,7 @@ def process_md_chunk(chunk: str) -> str:
     slide_attrs, chunk = extract_slide_directive(chunk)
     attrs = {**fm_attrs, **slide_attrs}
     content, notes = extract_notes(chunk)
+    content = preprocess_markdown_in_html(content)
     html = render_markdown(content)
     return wrap_section(html, attrs, notes)
 
