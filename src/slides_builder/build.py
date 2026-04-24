@@ -64,6 +64,8 @@ HTML_TEMPLATE = """\
 <script src="vendor/reveal.js/plugin/highlight/highlight.js"></script>
 <script src="vendor/reveal.js/plugin/notes/notes.js"></script>
 <script src="vendor/reveal.js/plugin/zoom/zoom.js"></script>
+<!-- Terminal session player -->
+<script src="vendor/terminal-player.js"></script>
 
 <script>
   Reveal.initialize({{
@@ -80,6 +82,17 @@ HTML_TEMPLATE = """\
     margin: 0.04,
     viewDistance: 20,
     plugins: [ RevealHighlight, RevealNotes, RevealZoom ]
+  }});
+
+  Reveal.on('slidechanged', ({{ currentSlide }}) => {{
+    currentSlide.querySelectorAll('[data-terminal-player]').forEach(el => {{
+      if (el._terminalPlayer) return;
+      TerminalPlayer.create(el, el.dataset.terminalPlayer, {{
+        height:    +(el.dataset.height    || 340),
+        finalHold: +(el.dataset.finalHold || 9000),
+        loop:       el.dataset.loop !== 'false',
+      }});
+    }});
   }});
 </script>
 </body>
