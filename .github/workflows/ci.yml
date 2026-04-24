@@ -1,4 +1,4 @@
-# CI: verify build.py works against the example slides and runs lint/validate.
+# CI: verify slides build, lint, and validate against the example slides.
 
 name: CI
 
@@ -22,10 +22,10 @@ jobs:
         run: uv sync --frozen
 
       - name: Build example slides
-        run: uv run python build.py --no-backup
+        run: uv run slides build --no-backup
 
       - name: Print outline
-        run: uv run python build.py --outline
+        run: uv run slides outline
 
       - name: Validate images
-        run: uv run python build.py --validate-images
+        run: uv run slides build --validate-images

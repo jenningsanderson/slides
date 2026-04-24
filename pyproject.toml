@@ -8,5 +8,27 @@ dependencies = [
     "markdown>=3.6",
 ]
 
+[project.optional-dependencies]
+# Required for: slides gif
+terminal = [
+    "pillow>=10.0",
+    "numpy>=1.24",
+]
+
+[project.scripts]
+slides = "slides_builder.cli:main"
+
 [project.urls]
 Repository = "https://github.com/jenningsanderson/slides"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slides_builder"]
+
+[dependency-groups]
+dev = [
+    "slides-builder[terminal]",
+]
