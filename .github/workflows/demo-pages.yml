@@ -11,8 +11,8 @@ on:
     paths:
       - 'slides/**'
       - 'css/**'
+      - 'src/**'
       - 'action.yml'
-      - 'build.py'
   workflow_dispatch:
 
 permissions:

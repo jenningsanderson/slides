@@ -1,28 +1,21 @@
-#!/usr/bin/env python3
 """
-server.py — Live-reload development server for the slide presentation.
+Live-reload development server for slides-builder.
 
-Serves the project from the current directory, watches slides/ and css/
-for changes, automatically rebuilds index.html on save, and signals
-connected browsers to reload via a polling endpoint — no external
-dependencies beyond build.py's requirements.
-
-Usage:
-    python3 server.py              # serve on http://localhost:3000
-    python3 server.py --port 8080  # custom port
-    python3 server.py --no-open    # do not open browser automatically
+Serves the project from the current directory, watches slides/ and css/ for
+changes, rebuilds index.html on save, and signals connected browsers to reload
+via a polling endpoint — no external dependencies beyond build.py's requirements.
 """
 
-import argparse
 import http.server
 import json
 import os
-import subprocess
 import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
+
+from slides_builder import build as build_mod
 
 # ---------------------------------------------------------------------------
 # Shared build state
@@ -50,28 +43,36 @@ def _get_version() -> int:
 
 
 # ---------------------------------------------------------------------------
-# Build runner (calls build.py as subprocess to keep state isolated)
+# Build runner
 # ---------------------------------------------------------------------------
 
-def run_build(verbose: bool = True) -> bool:
-    """Invoke build.py and return True on success."""
-    result = subprocess.run(
-        [sys.executable, "build.py", "--no-backup"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0:
+def _rebuild(
+    slides_dir: str,
+    output: str,
+    project_root: str,
+    title: str = "Slides",
+    base_url: str = "",
+    verbose: bool = True,
+) -> bool:
+    """Trigger a build and update the reload version counter. Returns True on success."""
+    try:
+        build_mod.run_build(
+            slides_dir=slides_dir,
+            output=output,
+            project_root=project_root,
+            no_backup=True,
+            title=title,
+            base_url=base_url,
+            verbose=verbose,
+        )
         v = _increment()
         if verbose:
             ts = time.strftime("%H:%M:%S")
-            out = result.stdout.strip().splitlines()
-            summary = out[-1] if out else "done"
-            print(f"[{ts}] Rebuilt (v{v}) — {summary}")
+            print(f"[{ts}] Rebuilt (v{v})")
         return True
-    else:
-        err = (result.stderr or result.stdout).strip()
-        _set_error(err)
-        print(f"  Build failed: {err}", file=sys.stderr)
+    except Exception as exc:
+        _set_error(str(exc))
+        print(f"  Build failed: {exc}", file=sys.stderr)
         return False
 
 
@@ -81,7 +82,7 @@ def run_build(verbose: bool = True) -> bool:
 
 _LIVE_RELOAD_JS = """\
 <script>
-/* live-reload: injected by server.py */
+/* live-reload: injected by server */
 (function () {
   var v = null;
   function poll() {
@@ -106,7 +107,6 @@ _LIVE_RELOAD_JS = """\
 class _Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # type: ignore[override]
-        # Reload-check endpoint polled by the injected JS
         if self.path == "/__reload__":
             body = json.dumps({"v": _get_version()}).encode()
             self.send_response(200)
@@ -131,12 +131,11 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(body)
                 return
             except FileNotFoundError:
-                pass  # fall through to default handler
+                pass
 
         super().do_GET()
 
     def log_message(self, fmt: str, *args: object) -> None:
-        # Suppress noise from asset requests; log only page navigation
         path = str(args[0]).split()[1] if args else ""
         if not any(path.startswith(p) for p in ("/vendor/", "/css/", "/assets/", "/__")):
             ts = time.strftime("%H:%M:%S")
@@ -164,7 +163,13 @@ def _snapshot(files: list[Path]) -> dict[str, float]:
     return result
 
 
-def _watch_loop(slides_dir: str) -> None:
+def _watch_loop(
+    slides_dir: str,
+    output: str,
+    project_root: str,
+    title: str,
+    base_url: str,
+) -> None:
     files = _watched_files(slides_dir)
     prev = _snapshot(files)
     while True:
@@ -176,64 +181,45 @@ def _watch_loop(slides_dir: str) -> None:
             names = ", ".join(Path(f).name for f in changed)
             ts = time.strftime("%H:%M:%S")
             print(f"[{ts}] Changed: {names}")
-            run_build(verbose=True)
+            _rebuild(slides_dir, output, project_root, title=title, base_url=base_url)
         prev = curr
 
 
 # ---------------------------------------------------------------------------
-# CLI
+# Public entry point
 # ---------------------------------------------------------------------------
 
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description="Live-reload dev server for the slide presentation.",
-    )
-    p.add_argument(
-        "--port", type=int, default=3000,
-        help="port to listen on (default: 3000)",
-    )
-    p.add_argument(
-        "--slides-dir", default="slides", metavar="DIR",
-        help="slides directory to watch (default: slides)",
-    )
-    p.add_argument(
-        "--no-open", action="store_true",
-        help="do not open the browser automatically",
-    )
-    return p.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-
-    if not Path("build.py").exists():
-        sys.exit("Error: build.py not found. Run server.py from the project root.")
+def run_server(
+    slides_dir: str = "slides",
+    output: str = "index.html",
+    port: int = 3000,
+    no_open: bool = False,
+    title: str = "Slides",
+    base_url: str = "",
+) -> None:
+    project_root = os.getcwd()
 
     print("Building slides...")
-    run_build(verbose=False)
-    print(f"  Done. Starting server on http://localhost:{args.port}\n")
+    _rebuild(slides_dir, output, project_root, title=title, base_url=base_url, verbose=False)
+    print(f"  Done. Starting server on http://localhost:{port}\n")
 
     watcher = threading.Thread(
-        target=_watch_loop, args=(args.slides_dir,), daemon=True
+        target=_watch_loop,
+        args=(slides_dir, output, project_root, title, base_url),
+        daemon=True,
     )
     watcher.start()
 
-    if not args.no_open:
-        threading.Timer(
-            0.3, lambda: webbrowser.open(f"http://localhost:{args.port}")
-        ).start()
+    if not no_open:
+        threading.Timer(0.3, lambda: webbrowser.open(f"http://localhost:{port}")).start()
 
     try:
-        httpd = http.server.HTTPServer(("", args.port), _Handler)
-        print(f"Serving at http://localhost:{args.port}")
-        print(f"Watching {args.slides_dir}/ and css/ for changes.")
+        httpd = http.server.HTTPServer(("", port), _Handler)
+        print(f"Serving at http://localhost:{port}")
+        print(f"Watching {slides_dir}/ and css/ for changes.")
         print("Press Ctrl-C to stop.\n")
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")
     except OSError as e:
-        sys.exit(f"Error: {e}\nIs port {args.port} already in use? Try --port 8080")
-
-
-if __name__ == "__main__":
-    main()
+        sys.exit(f"Error: {e}\nIs port {port} already in use? Try --port 8080")

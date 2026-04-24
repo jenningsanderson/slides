@@ -34,9 +34,8 @@ inputs:
 
   css-dir:
     description: >
-      Path to a directory of custom CSS files to include (relative to
-      repo root). When provided, this replaces the default theme CSS.
-      When omitted, the action's built-in theme is used.
+      Path to a directory of custom CSS files (relative to repo root).
+      Falls back to css/ in the repo root, then the action's built-in theme.
     required: false
     default: ''
 
@@ -48,7 +47,7 @@ inputs:
     default: 'assets'
 
   extra-build-args:
-    description: 'Additional arguments forwarded verbatim to build.py'
+    description: 'Additional arguments forwarded verbatim to slides build'
     required: false
     default: ''
 
@@ -83,11 +82,12 @@ runs:
         cp -r "${{ github.action_path }}/vendor" \
               "${{ github.workspace }}/${{ inputs.output-dir }}/vendor"
 
-    - name: Copy CSS (custom or action default)
+    - name: Copy CSS (custom repo css/ > action default)
       shell: bash
       run: |
         CSS_SRC=""
-        if [ -n "${{ inputs.css-dir }}" ] && [ -d "${{ github.workspace }}/${{ inputs.css-dir }}" ]; then
+        if [ -n "${{ inputs.css-dir }}" ] && \
+           [ -d "${{ github.workspace }}/${{ inputs.css-dir }}" ]; then
           CSS_SRC="${{ github.workspace }}/${{ inputs.css-dir }}"
         elif [ -d "${{ github.workspace }}/css" ]; then
           CSS_SRC="${{ github.workspace }}/css"
@@ -118,8 +118,7 @@ runs:
           ARGS="$ARGS ${{ inputs.extra-build-args }}"
         fi
 
-        uv run --project "${{ github.action_path }}" \
-          python "${{ github.action_path }}/build.py" \
+        uv run --project "${{ github.action_path }}" slides build \
           --slides-dir "${{ github.workspace }}/${{ inputs.slides-dir }}" \
           --output "${{ github.workspace }}/${{ inputs.output-dir }}/index.html" \
           --no-backup \

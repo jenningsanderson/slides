@@ -1,14 +1,15 @@
-## Slide Features
+## Markdown Features
 
 <div class="two-col">
 <div markdown="1">
 
-#### Markdown conventions
+#### In every slide
 
-- `---` on its own line → vertical sub-slide
+- `---` on its own line → vertical sub-slide ↓
 - `Note:` → speaker notes (`S` to open)
 - ` ```python ` fenced blocks → syntax-highlighted
-- GFM pipe tables supported
+- GFM pipe tables
+- `markdown="1"` inside HTML blocks
 
 </div>
 <div markdown="1">
@@ -33,8 +34,8 @@ Or inline:
 </div>
 
 Note:
-The action ships Reveal.js 5.1.0 vendored locally — no CDN required.
-All markdown is rendered to static HTML by Python before the browser loads a single byte, so there is no flash of unrendered content and no dependency on the RevealMarkdown plugin.
+All markdown is converted to static HTML by Python before the browser loads anything.
+No flash of unrendered content. No dependency on the RevealMarkdown plugin.
 
 ---
 
@@ -42,8 +43,39 @@ All markdown is rendered to static HTML by Python before the browser loads a sin
 
 Separate sections within one file with `---`.
 
-This slide is a sub-slide of the previous one.
-Navigate **down** (↓) to reach it.
+Navigate **down ↓** to reach this slide from the previous one.
+
+| File | Becomes |
+|---|---|
+| Single `.md`, no `---` | One horizontal slide |
+| Single `.md` with `---` | Vertical stack |
+| `01-intro.md`, `02-demo.md` | Two horizontal slides |
 
 Note:
-Each .md file becomes one horizontal slide. Use --- inside the file to create a vertical stack.
+Each .md file is one horizontal entry. The --- separator creates vertical sub-slides within a file.
+
+---
+
+## Syntax Highlighting
+
+All fenced code blocks are highlighted via highlight.js (GitHub theme).
+
+```python
+from slides_builder import build
+
+sections = build.discover_slides("slides/")
+html = build.render_index_html(sections, title="My Talk")
+Path("index.html").write_text(html)
+```
+
+```bash
+# Build once
+uv run slides build
+
+# Dev server with live reload
+uv run slides serve
+```
+
+Note:
+Code blocks produce class="language-xyz" directly on the pre/code elements,
+which highlight.js picks up without any server-side processing.

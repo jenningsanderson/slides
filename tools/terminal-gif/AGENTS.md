@@ -21,14 +21,14 @@ The toolset turns any shell command into a presentation-ready animation in two f
 
 ## Tool locations
 
-All tools live in `tools/terminal-gif/` relative to the repo root:
+The capture and gif commands are part of the `slides` CLI (package: `slides_builder`):
 
 ```
+src/slides_builder/tools/
+├── terminal_capture.py     ← slides capture implementation
+└── terminal_gif.py         ← slides gif implementation
+
 tools/terminal-gif/
-├── terminal-capture        ← Python: run a command, save timestamped JSON
-├── terminal_capture.py
-├── terminal-gif            ← Python: run a command, render animated GIF
-├── terminal_gif.py
 ├── terminal-player.js      ← JavaScript: play a JSON session in a <div>
 ├── AGENTS.md               ← this file
 ├── README.md
@@ -38,11 +38,11 @@ tools/terminal-gif/
     └── example.html
 ```
 
-Run the Python tools from the repo root:
+Run both tools via the unified CLI (from the repo root, after `uv sync`):
 
 ```bash
-python3 tools/terminal-gif/terminal-capture "command" output.json
-python3 tools/terminal-gif/terminal-gif      "command" output.gif
+uv run slides capture "command" output.json
+uv run slides gif     "command" output.gif
 ```
 
 ---
@@ -72,7 +72,7 @@ python3 my_demo_script.py
 ### 2. Record the session
 
 ```bash
-python3 tools/terminal-gif/terminal-capture \
+uv run slides capture \
   "python3 demos/gers_lookup.py" \
   assets/gers-lookup.json \
   --title "DuckDB — GERS registry lookup"
@@ -87,7 +87,7 @@ contains the expected output lines. If the command timed out, increase `--timeou
 ### 3. Generate the GIF
 
 ```bash
-python3 tools/terminal-gif/terminal-gif \
+uv run slides gif \
   "python3 demos/gers_lookup.py" \
   assets/gers-lookup.gif \
   --title "DuckDB — GERS registry lookup" \
@@ -400,11 +400,10 @@ fetches the JSON at runtime via `fetch()`, so it must be served alongside the HT
 
 ```bash
 # Record a session
-python3 tools/terminal-gif/terminal-capture "CMD" assets/NAME.json --title "TITLE"
+uv run slides capture "CMD" assets/NAME.json --title "TITLE"
 
 # Generate a GIF
-python3 tools/terminal-gif/terminal-gif "CMD" assets/NAME.gif \
-  --title "TITLE" --final-hold 10
+uv run slides gif "CMD" assets/NAME.gif --title "TITLE" --final-hold 10
 
 # Embed in a slide (data attribute — zero JS)
 <div data-terminal-player="assets/NAME.json"
@@ -414,5 +413,5 @@ python3 tools/terminal-gif/terminal-gif "CMD" assets/NAME.gif \
 TerminalPlayer.create('#id', 'assets/NAME.json', { height: 340, finalHold: 10000 });
 
 # Player script tag (once per HTML file)
-<script src="tools/terminal-gif/terminal-player.js"></script>
+<script src="assets/terminal-player.js"></script>
 ```
