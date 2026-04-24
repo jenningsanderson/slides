@@ -1,0 +1,474 @@
+# AGENTS.md — slides-builder technical reference
+
+This file is the single source of truth for any agent or developer working on this
+repository. Read it before modifying code, adding features, or authoring slides.
+
+---
+
+## What this repo is
+
+`slides-builder` is a **GitHub Action + local CLI** that converts a folder of Markdown
+files into a fully static [Reveal.js](https://revealjs.com) presentation. All Markdown
+is rendered to HTML by Python before the browser loads anything — the Reveal.js Markdown
+plugin is intentionally excluded. The result is a self-contained `index.html` with no
+runtime dependencies on a CDN or parser.
+
+The action is designed to be used by any repo: add a `slides/` folder, reference
+`jenningsanderson/slides@main`, and GitHub Pages will host the result.
+
+---
+
+## Repository layout
+
+```
+slides-builder/
+├── src/slides_builder/         ← installable Python package
+│   ├── __init__.py
+│   ├── build.py                ← core build logic (no CLI)
+│   ├── serve.py                ← live-reload dev server
+│   ├── cli.py                  ← unified entry point: `slides <command>`
+│   └── tools/
+│       ├── terminal_capture.py ← `slides capture` implementation
+│       └── terminal_gif.py     ← `slides gif` implementation (needs Pillow + numpy)
+├── tools/terminal-gif/
+│   ├── terminal-player.js      ← browser-side JSON session player
+│   ├── AGENTS.md               ← terminal-gif-specific agent instructions
+│   └── examples/               ← example .json, .gif, .html
+├── slides/                     ← example presentation (Markdown source)
+├── css/
+│   └── default.css             ← built-in Reveal.js theme overrides
+├── assets/
+│   └── terminal-player.js      ← copy of terminal-player.js for demo deployment
+├── vendor/                     ← vendored Reveal.js 5.1.0 + highlight.js
+│   ├── reveal.js/
+│   └── highlight.js/
+├── .github/workflows/
+│   ├── ci.yml                  ← build + outline + validate on push
+│   └── demo-pages.yml          ← deploys slides/ to GitHub Pages as live demo
+├── action.yml                  ← GitHub Action definition
+├── pyproject.toml              ← package config, entry point, optional deps
+└── uv.lock
+```
+
+---
+
+## Setup and CLI
+
+Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync          # installs slides-builder + markdown + pillow + numpy into .venv
+uv run slides    # entry point
+```
+
+All commands:
+
+```
+slides build    [--slides-dir DIR] [--output PATH] [--title TEXT]
+                [--base-url URL] [--no-backup]
+                [--validate-images] [--export-notes PATH]
+
+slides serve    [--slides-dir DIR] [--output PATH] [--port PORT]
+                [--title TEXT] [--base-url URL] [--no-open]
+
+slides outline  [--slides-dir DIR]
+slides lint     [--slides-dir DIR]
+
+slides watch    [--slides-dir DIR] [--output PATH] [--title TEXT]
+                [--base-url URL] [--no-backup]
+
+slides capture  COMMAND output.json [--title TEXT] [--timeout SEC]
+
+slides gif      COMMAND output.gif  [--title TEXT] [--width PX] [--height PX]
+                [--font-size PT] [--timer-ticks N] [--pause-before SEC]
+                [--pause-after-cmd SEC] [--final-hold SEC]
+                [--timeout SEC] [--max-lines N] [--dry-run]
+```
+
+**Defaults:**
+- `--slides-dir` → `slides`
+- `--output` → `index.html`
+- `--port` → `3000`
+- `--final-hold` → `10.0` (seconds)
+- `--width` / `--height` → `1100` / `660`
+- `--font-size` → `17`
+
+---
+
+## Python package architecture
+
+### `src/slides_builder/build.py`
+
+Pure build logic — no argparse, no side effects beyond writing files when `run_build()` is called.
+
+Key public functions:
+
+| Function | Purpose |
+|---|---|
+| `discover_slides(slides_dir)` | Returns sorted list of `.md` / `.html` `Path` objects |
+| `render_markdown(content)` | Markdown → HTML string (thread-unsafe, single-process only) |
+| `process_md_file(path)` | One `.md` file → `<section>` HTML string |
+| `process_html_file(path)` | One `.html` file → `<section>` HTML string (legacy support) |
+| `render_index_html(sections, title, base_url)` | Sections list → full `index.html` string |
+| `run_build(slides_dir, output, project_root, ...)` | Full pipeline; writes `index.html`; returns sections list |
+| `watch_mode(slides_dir, output, project_root, ...)` | Polls for changes, calls `run_build` on diff |
+| `print_outline(slides_dir)` | Prints numbered slide titles to stdout |
+| `lint_slides(slides_dir, project_root)` | Returns list of issue strings |
+| `validate_images(html, project_root)` | Returns list of missing asset paths |
+| `collect_notes(sections)` | Extracts `<aside class="notes">` text as plain string |
+
+**Markdown extensions used:** `tables`, `fenced_code` (lang prefix `language-`), `md_in_html`.
+
+**Processing order for each chunk:**
+1. Strip YAML front matter → `<section>` attributes
+2. Strip `<!-- .slide: key="val" -->` directive → `<section>` attributes (overrides front matter)
+3. Split on bare `Note:` line → `<aside class="notes">`
+4. `render_markdown()` on remaining content
+5. Wrap in `<section>` with attributes
+
+`background-*` keys are automatically prefixed with `data-` when building the `<section>` open tag.
+
+### `src/slides_builder/serve.py`
+
+Imports `slides_builder.build` directly (no subprocess). Provides `run_server(...)`.
+
+Live-reload works by injecting a small polling script into `index.html` at serve time that
+hits `/__reload__` every 800 ms and calls `location.reload()` when the version counter changes.
+
+### `src/slides_builder/cli.py`
+
+`argparse` with subparsers. Each subcommand dispatches to a `_cmd_*` function that imports
+the relevant module lazily. The `gif` subcommand catches `ImportError` and prints a helpful
+message if Pillow/numpy are missing.
+
+### `src/slides_builder/tools/terminal_capture.py`
+
+Runs a command in a Unix PTY (`pty.openpty`), captures output chunks with real timestamps,
+and writes a JSON session file. No dependencies beyond stdlib.
+
+JSON session format:
+```json
+{
+  "version": 1,
+  "title": "...",
+  "command": "...",
+  "recorded_at": "2026-04-24T...",
+  "total_elapsed": 3.14,
+  "events": [
+    { "t": 0.0,   "type": "input",  "text": "the command" },
+    { "t": 0.12,  "type": "output", "text": "first output chunk\n" }
+  ]
+}
+```
+
+### `src/slides_builder/tools/terminal_gif.py`
+
+Same PTY capture as above, then renders each frame as a PIL `Image` and saves an animated
+GIF. Requires `pillow` and `numpy` (`uv sync` installs them by default via
+`dependency-groups.dev`).
+
+---
+
+## HTML template
+
+`build.py` contains `HTML_TEMPLATE` — a Python format string. Key structure:
+
+```
+vendor/reveal.js/dist/reset.css
+vendor/reveal.js/dist/reveal.css
+vendor/reveal.js/dist/theme/white.css
+vendor/highlight.js/github.min.css
+css/default.css               ← custom theme (loaded last, highest specificity)
+{slides_html}                 ← rendered <section> elements
+vendor/reveal.js/dist/reveal.js
+vendor/reveal.js/plugin/highlight/highlight.js
+vendor/reveal.js/plugin/notes/notes.js
+vendor/reveal.js/plugin/zoom/zoom.js
+```
+
+**All paths are relative.** Never use absolute paths or `<base href>` unless deploying to
+a GitHub Pages project site at a subpath (use `--base-url /repo-name/` for that case).
+
+Reveal.js is initialised with:
+- `hash: true`, `slideNumber: 'c/t'`, `center: false`
+- `width: 1280`, `height: 720`, `margin: 0.04`
+- Plugins: `RevealHighlight`, `RevealNotes`, `RevealZoom`
+- `RevealMarkdown` is **intentionally excluded**
+
+---
+
+## Slide authoring conventions
+
+### File naming
+Files are sorted alphabetically. Use numeric prefixes to control order:
+```
+slides/01-intro.md
+slides/02-architecture.md
+slides/03-demo.md
+```
+
+### Vertical sub-slides
+A bare `---` line (not inside a fenced code block) splits a file into vertical sub-slides:
+```markdown
+## Slide A
+Content.
+
+---
+
+## Slide B
+Navigate down ↓ to reach this.
+```
+Multiple chunks → outer `<section>` wrapping inner `<section>` elements.
+
+### Speaker notes
+```markdown
+## My Slide
+Content here.
+
+Note:
+Everything after this line is speaker notes. Press S to open.
+```
+Becomes `<aside class="notes">` inside the section.
+
+### Slide attributes
+
+YAML front matter (first thing in the file or chunk):
+```markdown
+---
+class: dark
+background: "#1e293b"
+---
+## Slide title
+```
+
+Inline directive (anywhere in the chunk):
+```html
+<!-- .slide: class="dark" data-background="#1e293b" -->
+```
+
+Both produce attributes on the `<section>` tag. Inline directive overrides front matter.
+`background-*` keys are automatically prefixed with `data-`.
+
+### Two-column layout
+```html
+<div class="two-col">
+<div markdown="1">
+
+Left column markdown here.
+
+</div>
+<div markdown="1">
+
+Right column markdown here.
+
+</div>
+</div>
+```
+The `two-col` class is defined in `css/default.css` as a two-column CSS grid.
+
+### Raw HTML slides
+Files with `.html` extension are supported for backward compatibility. The builder
+extracts `<section>` elements from them directly without markdown processing.
+
+---
+
+## CSS and assets
+
+### How CSS is resolved (both locally and in the action)
+
+1. If `--css-dir` (action: `css-dir`) is set and the directory exists → use it
+2. Else if `css/` exists in the working/workspace directory → use it
+3. Else → use the action's built-in `css/default.css`
+
+The chosen directory is copied to `output-dir/css/`. The HTML template loads `css/default.css`
+(the filename is hardcoded in the template — rename your file to `default.css` or add it
+alongside the existing one).
+
+### Assets directory
+`assets/` (configurable via `--assets-dir` / `assets-dir`) is copied to `output-dir/assets/`
+if it exists. Reference assets with relative paths: `assets/image.png`, `assets/demo.json`.
+
+**`assets/terminal-player.js`** — this repo ships a copy of `terminal-player.js` here so
+the demo presentation can reference it. When using this action in another repo, copy
+`terminal-player.js` to that repo's `assets/` directory.
+
+---
+
+## GitHub Action (`action.yml`)
+
+The action is a **composite** action. Steps in order:
+1. Resolve absolute output path → `$GITHUB_OUTPUT`
+2. Install uv via `astral-sh/setup-uv@v5`
+3. `uv sync --frozen` (from the action's own directory)
+4. `mkdir -p output-dir && cp -r vendor/ output-dir/vendor/`
+5. Copy CSS (priority: `css-dir` input → `css/` in workspace → action's `css/`)
+6. Copy `assets/` if it exists
+7. `uv run slides build --slides-dir ... --output ... --no-backup [extra args]`
+
+### Action inputs
+
+| Input | Default | Notes |
+|---|---|---|
+| `slides-dir` | `slides` | Relative to `$GITHUB_WORKSPACE` |
+| `output-dir` | `dist` | Relative to `$GITHUB_WORKSPACE` |
+| `title` | _(empty → "Slides")_ | Passed as `--title` |
+| `base-url` | _(empty)_ | Only needed for project Pages sites at `/repo-name/` |
+| `css-dir` | _(auto)_ | Override CSS lookup |
+| `assets-dir` | `assets` | Copied to `output-dir/assets/` if present |
+| `extra-build-args` | _(empty)_ | Appended verbatim to `slides build` |
+
+### Action output
+`output-dir` — absolute path to the built directory (use with `upload-pages-artifact`).
+
+---
+
+## Terminal GIF tool — complete reference
+
+See `tools/terminal-gif/AGENTS.md` for the full step-by-step workflow, demo script
+templates, and embedding patterns. Summary:
+
+### Capture a session
+```bash
+uv run slides capture "COMMAND" assets/NAME.json --title "TITLE"
+```
+Runs `COMMAND` in a PTY, saves timestamped JSON. No extra dependencies.
+
+### Generate a GIF
+```bash
+uv run slides gif "COMMAND" assets/NAME.gif \
+  --title "TITLE" \
+  --width 1100 --height 660 --font-size 17 \
+  --final-hold 10
+```
+Requires Pillow + numpy (installed by `uv sync`).
+
+GIF sizing by context:
+
+| Context | `--width` | `--height` | `--font-size` |
+|---|---|---|---|
+| Full-width slide | 1100 | 660 | 17 |
+| Half-width slide | 720 | 480 | 14 |
+| GitHub README | 900 | 540 | 15 |
+
+Always use `--final-hold` ≥ 8 seconds.
+
+### Embed the interactive player
+```html
+<!-- Add once per presentation HTML, after Reveal.js scripts -->
+<script src="assets/terminal-player.js"></script>
+<script>
+  Reveal.on('slidechanged', ({ currentSlide }) => {
+    const el = currentSlide.querySelector('[data-terminal-player]');
+    if (!el || el._terminalPlayer) return;
+    TerminalPlayer.create(el, el.dataset.terminalPlayer, {
+      height:    +(el.dataset.height    || 340),
+      finalHold: +(el.dataset.finalHold || 9000),
+      loop:      el.dataset.loop !== 'false',
+    });
+  });
+</script>
+
+<!-- In each slide that uses the player -->
+<div data-terminal-player="assets/NAME.json"
+     data-height="340"
+     data-final-hold="10000"
+     data-loop="true">
+</div>
+
+<!-- GIF fallback for no-JS / PDF export -->
+<noscript>
+  <img src="assets/NAME.gif" style="width:100%" alt="terminal demo">
+</noscript>
+```
+
+### TerminalPlayer options
+```js
+TerminalPlayer.create(element, 'session.json', {
+  height:          340,    // px, terminal body height
+  typingSpeed:      35,    // ms per character
+  pauseBeforeType: 900,    // ms on empty terminal before typing
+  pauseAfterType:  500,    // ms after command typed, before output
+  finalHold:      9000,    // ms to hold on last frame
+  loop:           true,
+  autoplay:       true,
+  speedMultiplier: 1.0,
+  theme: {
+    promptCol:  '#9ece6a',
+    cmdCol:     '#e0e0f0',
+    accentCol:  '#7aa2f7',
+    timerText:  '#ffc832',
+    fontFamily: '"Fira Code", monospace',
+    fontSize:   '13.5px',
+  },
+});
+```
+
+---
+
+## pyproject.toml structure
+
+```toml
+[project.scripts]
+slides = "slides_builder.cli:main"
+
+[project.optional-dependencies]
+terminal = ["pillow>=10.0", "numpy>=1.24"]
+
+[dependency-groups]
+dev = ["slides-builder[terminal]"]   # installs terminal extras by default
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slides_builder"]
+```
+
+`uv sync` installs the `dev` dependency group, which pulls in Pillow + numpy. If you
+want a minimal install without the GIF dependencies: `uv sync --no-group dev`.
+
+---
+
+## CI workflows
+
+**`ci.yml`** — runs on every push to `main` or `claude/**` branches:
+1. `uv sync --frozen`
+2. `uv run slides build --no-backup`
+3. `uv run slides outline`
+4. `uv run slides build --validate-images`
+
+**`demo-pages.yml`** — runs on push to `main` when `slides/`, `css/`, `src/`, or
+`action.yml` change. Self-referential: uses `jenningsanderson/slides@main` to build its
+own `slides/` directory and deploy to `https://jenningsanderson.github.io/slides/`.
+
+---
+
+## Adding a new tool / extension
+
+1. Add the implementation to `src/slides_builder/tools/new_tool.py` with a `main()` function.
+2. Add a subcommand in `src/slides_builder/cli.py` — follow the `_cmd_capture` / `_cmd_gif`
+   pattern: lazy import inside the handler, graceful `ImportError` message if optional deps
+   are missing.
+3. If new PyPI dependencies are needed:
+   - Required → add to `[project.dependencies]`
+   - Optional → add to `[project.optional-dependencies]` under a named extra
+4. Run `uv sync` to update `uv.lock`.
+5. Document the new subcommand in this file and in `README.md`.
+
+---
+
+## Common pitfalls
+
+- **`---` inside fenced code blocks** is handled correctly — `split_on_hr()` tracks fence
+  depth and ignores `---` between ` ``` ` pairs.
+- **YAML front matter vs slide separator** — YAML front matter is only recognised at the
+  very start of a chunk (before any content). A `---` elsewhere is a sub-slide separator.
+- **Relative paths only** — the HTML template uses relative paths for all vendor/css/asset
+  references. Do not introduce absolute URLs. Use `--base-url` only when the page is served
+  from a non-root subpath.
+- **`terminal-player.js` must be served** — it is fetched at runtime via `fetch()`. Commit
+  the file to `assets/` and make sure the action copies `assets/` to the output directory.
+- **Both `.json` and `.gif` must be committed** — agents should always produce both formats
+  and commit both files to the repo.
+- **`--final-hold` < 8s** — do not do this; audiences need time to read terminal output.
