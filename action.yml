@@ -107,19 +107,19 @@ runs:
     - name: Build presentation
       shell: bash
       run: |
-        ARGS=""
+        ARGS=()
         if [ -n "${{ inputs.title }}" ]; then
-          ARGS="$ARGS --title ${{ inputs.title }}"
+          ARGS+=(--title "${{ inputs.title }}")
         fi
         if [ -n "${{ inputs.base-url }}" ]; then
-          ARGS="$ARGS --base-url ${{ inputs.base-url }}"
+          ARGS+=(--base-url "${{ inputs.base-url }}")
         fi
         if [ -n "${{ inputs.extra-build-args }}" ]; then
-          ARGS="$ARGS ${{ inputs.extra-build-args }}"
+          ARGS+=(${{ inputs.extra-build-args }})
         fi
 
         uv run --project "${{ github.action_path }}" slides build \
           --slides-dir "${{ github.workspace }}/${{ inputs.slides-dir }}" \
           --output "${{ github.workspace }}/${{ inputs.output-dir }}/index.html" \
           --no-backup \
-          $ARGS
+          "${ARGS[@]}"
