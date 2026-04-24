@@ -190,20 +190,20 @@ Reveal.js 5.1.0 is vendored in this repository and copied into your output direc
 
 ```
 slides-builder/
-├── src/slides_builder/     ← Python package
-│   ├── build.py            ← core build logic
-│   ├── serve.py            ← live-reload dev server
-│   ├── cli.py              ← unified entry point (slides …)
+├── src/slides_builder/         ← Python package
+│   ├── build.py                ← core build logic
+│   ├── serve.py                ← live-reload dev server
+│   ├── cli.py                  ← unified entry point (uv run slides …)
 │   └── tools/
-│       ├── terminal_capture.py
-│       └── terminal_gif.py
+│       ├── terminal_capture.py ← slides capture implementation
+│       └── terminal_gif.py     ← slides gif implementation
 ├── tools/terminal-gif/
-│   ├── terminal-player.js  ← browser-side JSON player
-│   └── AGENTS.md           ← agent instructions for building demos
-├── slides/                 ← example presentation source
-├── css/                    ← default theme
-├── assets/                 ← terminal-player.js for the demo
-├── vendor/                 ← vendored Reveal.js 5.1.0
-├── action.yml              ← GitHub Action definition
+│   ├── terminal-player.js      ← browser-side JSON player
+│   └── AGENTS.md               ← agent instructions for building demos
+├── slides/                     ← example presentation source
+├── css/                        ← default theme
+├── assets/                     ← terminal-player.js (for demo deployment)
+├── vendor/                     ← vendored Reveal.js 5.1.0
+├── action.yml                  ← GitHub Action definition
 └── pyproject.toml
 ```
