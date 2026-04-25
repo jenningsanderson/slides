@@ -136,7 +136,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def log_message(self, fmt: str, *args: object) -> None:
-        path = str(args[0]).split()[1] if args else ""
+        parts = str(args[0]).split() if args else []
+        path = parts[1] if len(parts) > 1 else ""
         if not any(path.startswith(p) for p in ("/vendor/", "/css/", "/assets/", "/__")):
             ts = time.strftime("%H:%M:%S")
             print(f"[{ts}] {path}")

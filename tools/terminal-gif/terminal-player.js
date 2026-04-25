@@ -438,6 +438,8 @@
         return Promise.reject(new Error(`Element not found: ${selector}`));
       }
 
+      container._terminalPlayer = true; // guard against double-init before fetch resolves
+
       return fetch(jsonUrl)
         .then(r => {
           if (!r.ok) throw new Error(`Failed to load session: ${r.status} ${jsonUrl}`);
