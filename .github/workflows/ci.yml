@@ -21,6 +21,12 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Run tests
+        run: uv run pytest -q
+
+      - name: Lint slides
+        run: uv run slides lint
+
       - name: Build example slides
         run: uv run slides build --no-backup
 

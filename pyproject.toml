@@ -32,4 +32,8 @@ packages = ["src/slides_builder"]
 [dependency-groups]
 dev = [
     "slides-builder[terminal]",
+    "pytest>=8.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -323,13 +323,24 @@ def wrap_section(html_content: str, attrs: dict, notes_text: str) -> str:
     return f"{open_tag}\n{html_content}{notes_block}\n</section>"
 
 
+_TRUTHY = frozenset({"true", "yes", "1", "on"})
+
+
+def apply_fragments(html: str) -> str:
+    """Add Reveal.js fragment class to every <li> for incremental list reveal."""
+    return re.sub(r"<li>", '<li class="fragment">', html)
+
+
 def process_md_chunk(chunk: str) -> str:
     fm_attrs, chunk = extract_yaml_front_matter(chunk)
     slide_attrs, chunk = extract_slide_directive(chunk)
     attrs = {**fm_attrs, **slide_attrs}
+    incremental = attrs.pop("incremental", "").lower() in _TRUTHY
     content, notes = extract_notes(chunk)
     content = preprocess_markdown_in_html(content)
     html = render_markdown(content)
+    if incremental:
+        html = apply_fragments(html)
     return wrap_section(html, attrs, notes)
 
 
