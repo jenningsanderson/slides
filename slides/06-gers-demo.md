@@ -1,3 +1,7 @@
+---
+class: dark
+background: "#0f172a"
+---
 ## GERS: Global Entity Reference System
 
 Every Overture feature has a stable ID. Look it up anywhere.
@@ -15,3 +19,4 @@ Every Overture feature has a stable ID. Look it up anywhere.
 Note:
 GERS IDs are stable across releases. Look up the registry once to get the exact
 parquet file path and bounding box, then fetch only that file — no full-dataset scan.
+This slide uses the dark theme — class: dark + background: "#0f172a" — which suits terminal output.

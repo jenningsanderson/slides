@@ -152,13 +152,37 @@ _NOTE_RE = re.compile(r"\nNote:\s*\n", re.IGNORECASE)
 _SECTION_TAG_RE = re.compile(r"<(/?)section(\s[^>]*)?>", re.IGNORECASE)
 
 
+def _fenced_ranges(text: str) -> list[tuple[int, int]]:
+    """Return (start, end) byte ranges of fenced code blocks in *text*."""
+    ranges: list[tuple[int, int]] = []
+    in_fence = False
+    fence_char: str | None = None
+    pos = 0
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            opener = stripped[:3]
+            if not in_fence:
+                in_fence = True
+                fence_char = opener
+                fence_start = pos
+            elif fence_char and stripped.startswith(fence_char) and stripped.strip("`~") == "":
+                in_fence = False
+                ranges.append((fence_start, pos + len(line)))
+                fence_char = None
+        pos += len(line) + 1
+    return ranges
+
+
 def extract_slide_directive(chunk: str) -> tuple[dict, str]:
-    match = _SLIDE_DIRECTIVE_RE.search(chunk)
-    if not match:
-        return {}, chunk
-    attrs = dict(_ATTR_RE.findall(match.group(1)))
-    cleaned = _SLIDE_DIRECTIVE_RE.sub("", chunk, count=1).strip()
-    return attrs, cleaned
+    fences = _fenced_ranges(chunk)
+    for match in _SLIDE_DIRECTIVE_RE.finditer(chunk):
+        if any(s <= match.start() < e for s, e in fences):
+            continue  # directive is inside a code block — ignore it
+        attrs = dict(_ATTR_RE.findall(match.group(1)))
+        cleaned = chunk[: match.start()] + chunk[match.end() :]
+        return attrs, cleaned.strip()
+    return {}, chunk
 
 
 def extract_notes(chunk: str) -> tuple[str, str]:
@@ -202,13 +226,18 @@ def extract_yaml_front_matter(content: str) -> tuple[dict, str]:
 def split_on_hr(content: str) -> list[str]:
     """
     Split markdown on bare '---' lines into chunks (vertical sub-slides).
-    Skips '---' lines inside fenced code blocks.
+    Skips '---' lines inside fenced code blocks or YAML front matter blocks.
+
+    YAML front matter is detected when a '---' appears at the very start of a
+    new chunk (current is empty). The opening and closing '---' delimiters are
+    kept inside the chunk so extract_yaml_front_matter can parse them later.
     """
     lines = content.split("\n")
     chunks: list[list[str]] = []
     current: list[str] = []
     in_fence = False
     fence_char: str | None = None
+    in_front_matter = False
 
     for line in lines:
         stripped = line.strip()
@@ -223,8 +252,18 @@ def split_on_hr(content: str) -> list[str]:
                 fence_char = None
 
         if not in_fence and stripped == "---":
-            chunks.append(current)
-            current = []
+            if in_front_matter:
+                # Closing delimiter — include it and leave front matter mode.
+                in_front_matter = False
+                current.append(line)
+            elif not current:
+                # Opening delimiter at the start of a fresh chunk — front matter.
+                in_front_matter = True
+                current.append(line)
+            else:
+                # Regular sub-slide separator.
+                chunks.append(current)
+                current = []
         else:
             current.append(line)
 

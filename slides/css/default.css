@@ -162,7 +162,7 @@
   font-size: 0.9em;
 }
 
-/* ─── Two-column layout ──────────────────────────────────────────────────── */
+/* ─── Layout utilities ───────────────────────────────────────────────────── */
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -170,6 +170,123 @@
   margin-top: 0.5em;
   flex: 1;
   min-height: 0;
+}
+
+.cols-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.5em;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Slide themes ───────────────────────────────────────────────────────── */
+/*
+  Apply via front matter:   class: hero
+  All three themes work with or without a custom background colour.
+  The dark theme is designed for a dark data-background (e.g. "#1e293b").
+*/
+
+/* hero ──────────────────────────────────────────────────────────────────────
+   Centred, large-typography layout. Use for title slides and section breaks. */
+.reveal .slides section.hero {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.reveal .slides section.hero h1 {
+  font-size: 3em;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 0.3em;
+}
+
+.reveal .slides section.hero h2 {
+  border: none;
+  font-size: 1.1em;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 0;
+}
+
+.reveal .slides section.hero p {
+  font-size: 0.8em;
+  margin-top: 1em;
+  color: var(--text-muted);
+}
+
+/* dark ──────────────────────────────────────────────────────────────────────
+   Inverted palette for code demos, terminal output, or high-contrast moments.
+   Pair with  background: "#1e293b"  (or darker) in front matter. */
+.reveal .slides section.dark {
+  color: #94a3b8;
+}
+
+.reveal .slides section.dark h1 {
+  color: #f8fafc;
+}
+
+.reveal .slides section.dark h2 {
+  color: #93c5fd;
+  border-bottom-color: rgba(147, 197, 253, 0.2);
+}
+
+.reveal .slides section.dark h3 {
+  color: #e2e8f0;
+}
+
+.reveal .slides section.dark h4 {
+  color: #7dd3fc;
+}
+
+.reveal .slides section.dark p,
+.reveal .slides section.dark ul,
+.reveal .slides section.dark ol {
+  color: #94a3b8;
+}
+
+.reveal .slides section.dark code:not(pre code) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #7dd3fc;
+}
+
+/* statement ─────────────────────────────────────────────────────────────────
+   Minimal layout for a single bold takeaway or quote.
+   Put your text in a blockquote (> …) for the large-text treatment. */
+.reveal .slides section.statement {
+  justify-content: center;
+}
+
+.reveal .slides section.statement blockquote {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  font-size: 1.6em;
+  font-weight: 700;
+  font-style: normal;
+  color: var(--text-primary);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.reveal .slides section.statement blockquote * {
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  color: inherit;
+  line-height: inherit;
+  margin: 0;
+}
+
+.reveal .slides section.statement > p {
+  font-size: 0.8em;
+  margin-top: 1.5em;
+  color: var(--text-muted);
 }
 
 /* ─── Reveal.js chrome ───────────────────────────────────────────────────── */
