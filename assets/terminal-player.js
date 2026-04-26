@@ -37,6 +37,7 @@
     loop: true,
     autoplay: true,
     speedMultiplier: 1.0,
+    height: null,           // px — if null, fills the parent via flex
     theme: {
       bg:         '#12121c',
       headerBg:   '#1c1c2c',
@@ -121,6 +122,9 @@
     _build() {
       const t = this.opts.theme;
       const wrap = this.container;
+      const heightStyle = this.opts.height
+        ? `height: ${this.opts.height}px;`
+        : `flex: 1; min-height: 0;`;
       wrap.style.cssText = `
         background: ${t.bg};
         border-radius: 8px;
@@ -132,6 +136,7 @@
         position: relative;
         display: flex;
         flex-direction: column;
+        ${heightStyle}
       `;
 
       // Header bar
@@ -216,14 +221,15 @@
       this._header.appendChild(headerLeft);
       this._header.appendChild(headerRight);
 
-      // Terminal body
+      // Terminal body — flex:1 fills whatever height the container allows;
+      // overflow:auto provides the scroll viewport once the container is bounded.
       this._body = el('div', {
         style: {
           flex: '1',
           overflow: 'auto',
           padding: '12px 16px',
           boxSizing: 'border-box',
-          minHeight: '200px',
+          minHeight: '0',
         },
       });
 
@@ -438,6 +444,8 @@
         return Promise.reject(new Error(`Element not found: ${selector}`));
       }
 
+      container._terminalPlayer = true; // guard against double-init before fetch resolves
+
       return fetch(jsonUrl)
         .then(r => {
           if (!r.ok) throw new Error(`Failed to load session: ${r.status} ${jsonUrl}`);
@@ -477,6 +485,7 @@
       document.querySelectorAll('[data-terminal-player]').forEach(el => {
         const url  = el.getAttribute('data-terminal-player');
         const opts = {};
+        if (el.dataset.height)           opts.height           = +el.dataset.height;
         if (el.dataset.typingSpeed)      opts.typingSpeed      = +el.dataset.typingSpeed;
         if (el.dataset.pauseBeforeType)  opts.pauseBeforeType  = +el.dataset.pauseBeforeType;
         if (el.dataset.pauseAfterType)   opts.pauseAfterType   = +el.dataset.pauseAfterType;
