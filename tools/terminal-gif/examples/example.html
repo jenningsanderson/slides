@@ -157,7 +157,7 @@
   </div>
 
   <pre class="code"><span class="cm">/* Embed with the JS API */</span>
-<span class="kw">import</span> TerminalPlayer <span class="kw">from</span> <span class="str">'../terminal-player.js'</span>;
+<span class="kw">import</span> TerminalPlayer <span class="kw">from</span> <span class="str">'../../../js/terminal-player.js'</span>;
 
 TerminalPlayer.<span class="fn">create</span>(<span class="str">'#js-player'</span>, <span class="str">'example.json'</span>, {
   typingSpeed:     <span class="at">40</span>,     <span class="cm">// ms per character</span>
@@ -193,7 +193,7 @@ TerminalPlayer.<span class="fn">create</span>(<span class="str">'#js-player'</sp
      <span class="at">data-typing-speed</span>=<span class="str">"45"</span>
      <span class="at">data-final-hold</span>=<span class="str">"9000"</span>
      <span class="at">data-loop</span>=<span class="str">"true"</span>&gt;&lt;/<span class="kw">div</span>&gt;
-&lt;<span class="kw">script</span> <span class="at">src</span>=<span class="str">"../terminal-player.js"</span>&gt;&lt;/<span class="kw">script</span>&gt;</pre>
+&lt;<span class="kw">script</span> <span class="at">src</span>=<span class="str">"../../../js/terminal-player.js"</span>&gt;&lt;/<span class="kw">script</span>&gt;</pre>
 </section>
 
 <!-- ── Section 3: GIF fallback ──────────────────────────────────────── -->
@@ -242,7 +242,7 @@ TerminalPlayer.<span class="fn">create</span>(<span class="str">'#term'</span>, 
 </footer>
 
 <!-- Load the player (path relative to this file in examples/) -->
-<script src="../terminal-player.js"></script>
+<script src="../../../js/terminal-player.js"></script>
 <script>
   TerminalPlayer.create('#js-player', 'example.json', {
     typingSpeed:     40,

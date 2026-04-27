@@ -32,7 +32,6 @@ slides-builder/
 │       ├── terminal_capture.py ← `slides capture` implementation
 │       └── terminal_gif.py     ← `slides gif` implementation (needs Pillow + numpy)
 ├── tools/terminal-gif/
-│   ├── terminal-player.js      ← browser-side JSON session player
 │   ├── AGENTS.md               ← terminal-gif-specific agent instructions
 │   └── examples/               ← example .json, .gif, .html
 ├── slides/                     ← example presentation (Markdown source)
@@ -41,13 +40,14 @@ slides-builder/
 │   │   └── default.css         ← built-in Reveal.js theme overrides
 │   ├── 01-title.md
 │   └── ...
-├── assets/                     ← images, JSON sessions, terminal-player.js
-│   ├── terminal-player.js      ← copy of terminal-player.js for demo deployment
+├── assets/                     ← images and JSON sessions for the demo presentation
 │   ├── gers-demo.json          ← captured terminal session
 │   └── gers-demo.gif           ← animated GIF fallback
+├── js/                         ← browser-side scripts authored in this repo
+│   └── terminal-player.js      ← single canonical copy; edit only here
 ├── demos/                      ← scripted demo scripts for terminal capture
 │   └── gers_demo.py
-├── vendor/                     ← vendored Reveal.js 5.1.0 + highlight.js
+├── vendor/                     ← vendored third-party libraries (Reveal.js, highlight.js)
 ├── .github/workflows/
 │   ├── ci.yml                  ← build + outline + validate on push
 │   └── demo-pages.yml          ← deploys slides/ to GitHub Pages as live demo
@@ -338,9 +338,10 @@ To override via `config.yaml`: set `css_dir: path/to/css`.
 `assets/` (configurable via `--assets-dir` / `assets-dir`) is copied to `output-dir/assets/`
 if it exists. Reference assets with relative paths: `assets/image.png`, `assets/demo.json`.
 
-**`assets/terminal-player.js`** — this repo ships a copy of `terminal-player.js` here so
-the demo presentation can reference it. When using this action in another repo, copy
-`terminal-player.js` to that repo's `assets/` directory.
+### js/ directory
+`js/terminal-player.js` is the **single canonical copy** of the browser-side session player.
+The action copies `js/` to `output-dir/js/` automatically; the HTML template loads it from
+`js/terminal-player.js`. Do not duplicate this file — edit it only in `js/`.
 
 ---
 
@@ -350,7 +351,7 @@ The action is a **composite** action. Steps in order:
 1. Resolve absolute output path → `$GITHUB_OUTPUT`
 2. Install uv via `astral-sh/setup-uv@v5`
 3. `uv sync --frozen` (from the action's own directory)
-4. `mkdir -p output-dir && cp -r vendor/ output-dir/vendor/`
+4. `mkdir -p output-dir && cp -r vendor/ output-dir/vendor/ && cp -r js/ output-dir/js/`
 5. Copy CSS (priority: `<slides-dir>/css/` → `css/` at repo root → action's `slides/css/`)
 6. Copy `assets/` if it exists
 7. `uv run slides build --slides-dir ... --output ... --no-backup [extra args]`
@@ -405,20 +406,11 @@ GIF sizing by context:
 Always use `--final-hold` ≥ 8 seconds.
 
 ### Embed the interactive player
+The build system loads `js/terminal-player.js` and wires up the `slidechanged` handler
+automatically. You only need the div — no extra `<script>` tags required:
+
 ```html
-<!-- Add once per presentation HTML, after Reveal.js scripts -->
-<script src="assets/terminal-player.js"></script>
-<script>
-  Reveal.on('slidechanged', ({ currentSlide }) => {
-    const el = currentSlide.querySelector('[data-terminal-player]');
-    if (!el || el._terminalPlayer) return;
-    TerminalPlayer.create(el, el.dataset.terminalPlayer, {
-      height:    +(el.dataset.height    || 340),
-      finalHold: +(el.dataset.finalHold || 9000),
-      loop:      el.dataset.loop !== 'false',
-    });
-  });
-</script>
+<!-- In each slide that uses the player -->
 
 <!-- In each slide that uses the player -->
 <div data-terminal-player="assets/NAME.json"
@@ -519,8 +511,9 @@ own `slides/` directory and deploy to `https://jenningsanderson.github.io/slides
 - **Relative paths only** — the HTML template uses relative paths for all vendor/css/asset
   references. Do not introduce absolute URLs. Use `--base-url` only when the page is served
   from a non-root subpath.
-- **`terminal-player.js` must be served** — it is fetched at runtime via `fetch()`. Commit
-  the file to `assets/` and make sure the action copies `assets/` to the output directory.
+- **`terminal-player.js` must be served** — it is fetched at runtime via `fetch()`. The
+  action copies `js/terminal-player.js` to the output automatically. Do not duplicate the
+  file — the canonical copy lives only in `js/`.
 - **Both `.json` and `.gif` must be committed** — agents should always produce both formats
   and commit both files to the repo.
 - **`--final-hold` < 8s** — do not do this; audiences need time to read terminal output.

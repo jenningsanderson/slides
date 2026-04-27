@@ -65,7 +65,7 @@ HTML_TEMPLATE = """\
 <script src="vendor/reveal.js/plugin/notes/notes.js"></script>
 <script src="vendor/reveal.js/plugin/zoom/zoom.js"></script>
 <!-- Terminal session player -->
-<script src="vendor/terminal-player.js"></script>
+<script src="js/terminal-player.js"></script>
 
 <script>
   Reveal.initialize({{
@@ -410,7 +410,7 @@ def render_index_html(
 
 def validate_images(html: str, project_root: str) -> list[str]:
     missing: list[str] = []
-    skip_prefixes = ("http://", "https://", "data:", "#", "vendor/", "css/")
+    skip_prefixes = ("http://", "https://", "data:", "#", "vendor/", "css/", "js/")
     for match in re.finditer(r'(?:src|href)=["\']([^"\']+)["\']', html):
         path = match.group(1)
         if any(path.startswith(p) for p in skip_prefixes):

@@ -12,6 +12,7 @@ on:
       - 'slides/**'
       - 'css/**'
       - 'src/**'
+      - 'js/**'
       - 'vendor/**'
       - 'assets/**'
       - 'action.yml'

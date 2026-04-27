@@ -67,12 +67,14 @@ runs:
       working-directory: ${{ github.action_path }}
       run: uv sync --frozen
 
-    - name: Create output directory and copy Reveal.js vendor files
+    - name: Create output directory and copy vendor and js files
       shell: bash
       run: |
         mkdir -p "${{ github.workspace }}/${{ inputs.output-dir }}"
         cp -r "${{ github.action_path }}/vendor" \
               "${{ github.workspace }}/${{ inputs.output-dir }}/vendor"
+        cp -r "${{ github.action_path }}/js" \
+              "${{ github.workspace }}/${{ inputs.output-dir }}/js"
 
     - name: Copy CSS (slides/css/ > repo root css/ > action default)
       shell: bash

@@ -42,7 +42,8 @@ is the fallback for static contexts.
 
 ## Embedding the Player
 
-Place `terminal-player.js` in `assets/` and embed with a data attribute:
+`terminal-player.js` is bundled automatically — just add the `data-terminal-player`
+attribute to a div:
 
 ```html
 <div data-terminal-player="assets/demo.json"
@@ -52,22 +53,10 @@ Place `terminal-player.js` in `assets/` and embed with a data attribute:
 </div>
 ```
 
-Add to your Reveal initialisation (once per presentation):
-
-```html
-<script src="assets/terminal-player.js"></script>
-<script>
-  Reveal.on('slidechanged', ({ currentSlide }) => {
-    const el = currentSlide.querySelector('[data-terminal-player]');
-    if (!el || el._terminalPlayer) return;
-    TerminalPlayer.create(el, el.dataset.terminalPlayer, {
-      height: +(el.dataset.height || 340),
-      finalHold: +(el.dataset.finalHold || 9000),
-    });
-  });
-</script>
-```
+The build system loads `js/terminal-player.js` and wires up the `slidechanged` handler
+for you. No extra `<script>` tags needed.
 
 Note:
-The player fetches the JSON at runtime via fetch(), so both the HTML and the JSON
-file must be served together. Commit both assets/ files to git.
+The player fetches the JSON at runtime via fetch(), so the HTML must be served —
+opening index.html directly from the filesystem won't work. Use uv run slides serve
+for local development. Commit both the .json and .gif to git.
