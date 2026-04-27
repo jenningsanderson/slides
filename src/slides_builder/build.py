@@ -299,7 +299,7 @@ _BG_SHORTCUTS = frozenset({
     "background", "background-color", "background-image", "background-size",
     "background-position", "background-repeat", "background-opacity",
     "background-transition", "background-video", "background-video-loop",
-    "background-video-muted", "background-iframe",
+    "background-video-muted", "background-iframe", "background-gradient",
 })
 
 

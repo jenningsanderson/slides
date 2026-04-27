@@ -102,6 +102,33 @@
   margin-bottom: 0.2em;
 }
 
+/* ─── Links ──────────────────────────────────────────────────────────────── */
+.reveal a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.reveal a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ─── Blockquote (generic) ───────────────────────────────────────────────── */
+.reveal blockquote {
+  background: var(--bg-card);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 0.85em;
+  line-height: 1.5;
+  margin: 0.4em 0;
+  padding: 0.6em 1em;
+  text-align: left;
+  width: 100%;
+}
+
 /* ─── Code blocks ────────────────────────────────────────────────────────── */
 .reveal pre {
   background: var(--code-bg);
@@ -109,6 +136,8 @@
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   margin: 0.3em 0;
+  min-height: 0;
+  overflow: auto;
   width: 100%;
 }
 
@@ -179,6 +208,12 @@
   margin-top: 0.5em;
   flex: 1;
   min-height: 0;
+}
+
+.two-col > div,
+.cols-3 > div {
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ─── Slide themes ───────────────────────────────────────────────────────── */
@@ -253,6 +288,31 @@
   color: #7dd3fc;
 }
 
+.reveal .slides section.dark a {
+  color: #7dd3fc;
+}
+
+.reveal .slides section.dark blockquote {
+  background: rgba(255, 255, 255, 0.04);
+  border-left-color: #93c5fd;
+  color: #94a3b8;
+}
+
+.reveal .slides section.dark table th {
+  background: rgba(147, 197, 253, 0.1);
+  color: #93c5fd;
+  border-bottom-color: rgba(147, 197, 253, 0.2);
+}
+
+.reveal .slides section.dark table td {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+}
+
+.reveal .slides section.dark table td:first-child {
+  color: #e2e8f0;
+}
+
 /* statement ─────────────────────────────────────────────────────────────────
    Minimal layout for a single bold takeaway or quote.
    Put your text in a blockquote (> …) for the large-text treatment. */
@@ -287,6 +347,98 @@
   font-size: 0.8em;
   margin-top: 1.5em;
   color: var(--text-muted);
+}
+
+/* vaporwave ──────────────────────────────────────────────────────────────────
+   80s-inspired neon palette. Pair with  background: "#0d0015"  in front matter.
+   Combine with hero for a title card:  class: "hero vaporwave"               */
+.reveal .slides section.vaporwave {
+  --vp-pink:  #ff71ce;
+  --vp-cyan:  #01cdfe;
+  --vp-green: #05ffa1;
+  --vp-text:  #e0d0ff;
+  --vp-muted: #b090d0;
+  color: var(--vp-text);
+}
+
+.reveal .slides section.vaporwave h1 {
+  background: linear-gradient(135deg, var(--vp-pink) 0%, var(--vp-cyan) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.reveal .slides section.vaporwave h2 {
+  color: var(--vp-pink);
+  border-bottom-color: rgba(255, 113, 206, 0.25);
+  text-shadow: 0 0 18px rgba(255, 113, 206, 0.5);
+}
+
+.reveal .slides section.vaporwave h3 {
+  color: var(--vp-cyan);
+  text-shadow: 0 0 12px rgba(1, 205, 254, 0.45);
+}
+
+.reveal .slides section.vaporwave h4 {
+  color: var(--vp-green);
+  text-shadow: 0 0 10px rgba(5, 255, 161, 0.4);
+}
+
+.reveal .slides section.vaporwave p,
+.reveal .slides section.vaporwave ul,
+.reveal .slides section.vaporwave ol {
+  color: var(--vp-muted);
+}
+
+.reveal .slides section.vaporwave li {
+  color: var(--vp-text);
+}
+
+.reveal .slides section.vaporwave a {
+  color: var(--vp-cyan);
+}
+
+.reveal .slides section.vaporwave code:not(pre code) {
+  background: rgba(255, 113, 206, 0.1);
+  border-color: rgba(255, 113, 206, 0.3);
+  color: var(--vp-pink);
+}
+
+.reveal .slides section.vaporwave blockquote {
+  background: rgba(255, 113, 206, 0.06);
+  border-left-color: var(--vp-pink);
+  color: var(--vp-muted);
+}
+
+.reveal .slides section.vaporwave table th {
+  background: rgba(1, 205, 254, 0.08);
+  color: var(--vp-cyan);
+  border-bottom-color: rgba(1, 205, 254, 0.2);
+}
+
+.reveal .slides section.vaporwave table td {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+  color: var(--vp-muted);
+}
+
+.reveal .slides section.vaporwave table td:first-child {
+  color: var(--vp-text);
+}
+
+/* hero + vaporwave centering already handled by .hero; just ensure text is
+   transparent-fill on the subtitle too */
+.reveal .slides section.hero.vaporwave h2 {
+  color: var(--vp-muted);
+  -webkit-text-fill-color: var(--vp-muted);
+  background: none;
+  text-shadow: none;
+  border: none;
+}
+
+.reveal .slides section.hero.vaporwave p {
+  color: var(--vp-muted);
 }
 
 /* ─── Reveal.js chrome ───────────────────────────────────────────────────── */

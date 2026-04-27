@@ -276,6 +276,10 @@ class TestProcessMdChunk:
         html = process_md_chunk('---\nbackground-image: "url(img.png)"\n---\n## Slide')
         assert 'data-background-image="url(img.png)"' in self._section_tag(html)
 
+    def test_background_gradient_prefixed(self):
+        html = process_md_chunk('---\nbackground-gradient: "linear-gradient(135deg, #0d0015 0%, #1a003a 100%)"\n---\n## Slide')
+        assert 'data-background-gradient=' in self._section_tag(html)
+
     # Speaker notes
 
     def test_speaker_notes_rendered(self):
