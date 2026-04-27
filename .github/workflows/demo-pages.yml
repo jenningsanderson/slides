@@ -12,6 +12,8 @@ on:
       - 'slides/**'
       - 'css/**'
       - 'src/**'
+      - 'vendor/**'
+      - 'assets/**'
       - 'action.yml'
   workflow_dispatch:
 
