@@ -84,16 +84,20 @@ HTML_TEMPLATE = """\
     plugins: [ RevealHighlight, RevealNotes, RevealZoom ]
   }});
 
-  Reveal.on('slidechanged', ({{ currentSlide }}) => {{
-    currentSlide.querySelectorAll('[data-terminal-player]').forEach(el => {{
+  function _initTerminalPlayers(slide) {{
+    if (!slide) return;
+    slide.querySelectorAll('[data-terminal-player]').forEach(el => {{
       if (el._terminalPlayer) return;
       TerminalPlayer.create(el, el.dataset.terminalPlayer, {{
-        height:    +(el.dataset.height    || 340),
+        height:    el.dataset.height ? +el.dataset.height : null,
         finalHold: +(el.dataset.finalHold || 9000),
         loop:       el.dataset.loop !== 'false',
       }});
     }});
-  }});
+  }}
+
+  Reveal.on('ready',        ({{ currentSlide }}) => _initTerminalPlayers(currentSlide));
+  Reveal.on('slidechanged', ({{ currentSlide }}) => _initTerminalPlayers(currentSlide));
 </script>
 </body>
 </html>

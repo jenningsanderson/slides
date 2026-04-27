@@ -501,11 +501,15 @@
   // Expose globally
   global.TerminalPlayer = TerminalPlayer;
 
-  // Auto-init on DOMContentLoaded if any data-terminal-player elements exist
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => TerminalPlayer.autoInit());
-  } else {
-    TerminalPlayer.autoInit();
+  // Auto-init on DOMContentLoaded — but skip when Reveal.js is present, because
+  // the slide template manages init via Reveal's ready + slidechanged events.
+  // This prevents double-init on refresh when Reveal restores the hash position.
+  if (typeof Reveal === 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => TerminalPlayer.autoInit());
+    } else {
+      TerminalPlayer.autoInit();
+    }
   }
 
 }(typeof window !== 'undefined' ? window : this));
