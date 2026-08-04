@@ -43,6 +43,15 @@ inputs:
     required: false
     default: ''
 
+  provider:
+    description: >
+      Publish provider: 'pages' (default) or 's3'.
+      When set to 's3', the workflow must supply AWS credentials and s3-bucket.
+      This input is informational for the build action; actual publishing is
+      handled by the publish.yml reusable workflow or a separate workflow step.
+    required: false
+    default: 'pages'
+
 outputs:
   output-dir:
     description: 'Absolute path to the built presentation directory'

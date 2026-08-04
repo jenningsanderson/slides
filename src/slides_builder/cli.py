@@ -22,6 +22,7 @@ Usage:
     slides watch    [--slides-dir DIR] [--output PATH]
     slides capture  COMMAND output.json [--title TEXT] [--timeout SEC]
     slides gif      COMMAND output.gif  [--title TEXT] [options]
+    slides publish  [--slides-dir DIR] [--output-dir DIR] [--provider pages|s3]
 """
 
 import argparse
@@ -215,6 +216,33 @@ def _cmd_gif(args: argparse.Namespace) -> None:
     )
 
 
+def _cmd_publish(args: argparse.Namespace) -> None:
+    from slides_builder import config as cfg_mod
+    from slides_builder.publish import publish
+
+    cfg = cfg_mod.load(args.slides_dir)
+    deploy_cfg = cfg_mod.get_deploy_config(cfg)
+
+    # CLI --provider overrides config.
+    if args.provider:
+        deploy_cfg["provider"] = args.provider
+
+    # CLI --bucket / --prefix override S3 sub-config.
+    if args.bucket:
+        deploy_cfg["s3"]["bucket"] = args.bucket
+    if args.prefix:
+        deploy_cfg["s3"]["prefix"] = args.prefix
+
+    errors = cfg_mod.validate_deploy_config(deploy_cfg)
+    if errors:
+        for err in errors:
+            print(f"Error: {err}", file=sys.stderr)
+        sys.exit(1)
+
+    output_dir = args.output_dir or "dist"
+    publish(output_dir, deploy_cfg, dry_run=args.dry_run)
+
+
 # ---------------------------------------------------------------------------
 # Shared argument helpers
 # ---------------------------------------------------------------------------
@@ -267,6 +295,7 @@ commands:
   watch    Rebuild automatically on file changes
   capture  Record a shell command to a JSON session file
   gif      Record a shell command and render an animated GIF
+  publish  Deploy built output to GitHub Pages or S3
 
 examples:
   slides build
@@ -275,6 +304,8 @@ examples:
   slides lint
   slides capture "ls -lh" assets/demo.json --title "ls demo"
   slides gif "python3 demo.py" assets/demo.gif --final-hold 10
+  slides publish --provider pages --output-dir dist
+  slides publish --provider s3 --bucket slides.example.com
         """,
     )
 
@@ -359,6 +390,36 @@ examples:
     gp.add_argument("--max-lines",      type=int,   default=30)
     gp.add_argument("--dry-run",        action="store_true")
     gp.set_defaults(func=_cmd_gif)
+
+    # ── publish ───────────────────────────────────────────────────────────────
+    pp = sub.add_parser(
+        "publish",
+        aliases=["deploy"],
+        help="deploy built output to GitHub Pages or S3",
+    )
+    _add_slides_dir(pp)
+    pp.add_argument(
+        "--output-dir", default="", metavar="DIR",
+        help="built presentation directory (default: dist)",
+    )
+    pp.add_argument(
+        "--provider", default="", metavar="PROVIDER",
+        choices=["pages", "s3", ""],
+        help="publish provider: 'pages' or 's3'; overrides config.yaml",
+    )
+    pp.add_argument(
+        "--bucket", default="", metavar="BUCKET",
+        help="S3 bucket name; overrides deploy.s3.bucket in config.yaml",
+    )
+    pp.add_argument(
+        "--prefix", default="", metavar="PREFIX",
+        help="S3 key prefix; overrides deploy.s3.prefix in config.yaml",
+    )
+    pp.add_argument(
+        "--dry-run", action="store_true",
+        help="print what would be uploaded without actually uploading",
+    )
+    pp.set_defaults(func=_cmd_publish)
 
     return root
 

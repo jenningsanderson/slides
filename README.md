@@ -2,11 +2,16 @@
 
 A GitHub Action and local dev tool for building [Reveal.js](https://revealjs.com) presentations from Markdown.
 
-Drop `.md` files in a `slides/` folder → push → GitHub Pages serves a fully static presentation.
+Drop `.md` files in a `slides/` folder → push → your presentation is published automatically.
+
+**Default publish target:** GitHub Pages (`https://<owner>.github.io/<repo>/`)  
+**Optional publish target:** S3 / CloudFront (`https://slides.jenningsanderson.com/<owner>/<repo>/`)
 
 ---
 
 ## GitHub Action quick start
+
+### GitHub Pages (default)
 
 ```yaml
 # .github/workflows/pages.yml
@@ -14,7 +19,7 @@ name: Deploy Slides
 on:
   push:
     branches: [main]
-    paths: ['slides/**', 'css/**', 'assets/**']
+    paths: ['slides/**', 'assets/**']
 
 permissions:
   contents: read
@@ -47,6 +52,76 @@ jobs:
 
 Enable **Settings → Pages → Source: GitHub Actions** in your repo.
 
+### Reusable workflow (Pages or S3)
+
+Use the reusable `publish.yml` workflow to get both providers with a single line:
+
+```yaml
+# .github/workflows/slides.yml
+name: Publish Slides
+on:
+  push:
+    branches: [main]
+    paths: ['slides/**', 'assets/**']
+
+jobs:
+  publish:
+    uses: jenningsanderson/slides/.github/workflows/publish.yml@main
+    with:
+      provider: pages   # or s3
+      slides-dir: slides
+      output-dir: dist
+      title: 'My Presentation'
+    # For S3 only — supply secrets:
+    # secrets:
+    #   AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+```
+
+### S3 publishing
+
+To publish to S3 (e.g. `slides.jenningsanderson.com/<owner>/<repo>/`):
+
+1. Add a `deploy` section to `slides/config.yaml`:
+
+```yaml
+deploy:
+  provider: s3
+  s3:
+    bucket: slides.jenningsanderson.com
+    region: us-east-1
+    # prefix: owner/repo    # optional; defaults to GITHUB_REPOSITORY
+    # cloudfront_distribution_id: EXXXXXXXXXXXXX
+```
+
+2. Use the reusable workflow with `provider: s3` and one of:
+
+   **OIDC role (recommended — no long-lived credentials):**
+   ```yaml
+   jobs:
+     publish:
+       uses: jenningsanderson/slides/.github/workflows/publish.yml@main
+       with:
+         provider: s3
+         s3-bucket: slides.jenningsanderson.com
+       secrets:
+         AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+   ```
+
+   **Static key credentials (fallback):**
+   ```yaml
+   jobs:
+     publish:
+       uses: jenningsanderson/slides/.github/workflows/publish.yml@main
+       with:
+         provider: s3
+         s3-bucket: slides.jenningsanderson.com
+       secrets:
+         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+   ```
+
+URL mapping: `https://slides.jenningsanderson.com/<owner>/<repo>/`
+
 ---
 
 ## Local development
@@ -63,6 +138,20 @@ uv run slides serve          # live-reload at http://localhost:3000
 uv run slides outline        # print slide order
 uv run slides lint           # check notes, alt text, broken paths
 uv run slides --help         # all commands and flags
+```
+
+### Publishing locally
+
+```bash
+# GitHub Pages (validates output, actual deploy happens in CI)
+uv run slides publish --provider pages --output-dir dist
+
+# S3 (uploads immediately — requires AWS credentials in env)
+uv run slides publish --provider s3 --output-dir dist \
+  --bucket slides.jenningsanderson.com
+
+# Dry-run (print what would be uploaded)
+uv run slides publish --provider s3 --dry-run
 ```
 
 ---
@@ -110,6 +199,18 @@ title: My Presentation
 output: index.html
 serve:
   port: 3000
+
+# Deploy / publish settings (optional — defaults to GitHub Pages)
+deploy:
+  provider: pages          # pages | s3
+  # path_prefix: ""        # optional; provider-agnostic base path
+  s3:
+    bucket: slides.jenningsanderson.com
+    region: us-east-1
+    # prefix: ""           # defaults to <owner>/<repo> from GITHUB_REPOSITORY
+    # cloudfront_distribution_id: ""
+    cache_control_html: "no-cache"
+    cache_control_assets: "public,max-age=31536000,immutable"
 ```
 
 ## Custom theme
