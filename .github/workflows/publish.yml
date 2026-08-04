@@ -1,0 +1,224 @@
+# Reusable workflow: build slides and publish to GitHub Pages or S3.
+#
+# Usage in another repository:
+#
+#   jobs:
+#     publish-slides:
+#       uses: jenningsanderson/slides/.github/workflows/publish.yml@main
+#       with:
+#         provider: pages          # or s3
+#         slides-dir: slides
+#         output-dir: dist
+#       secrets:
+#         AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}        # for S3 OIDC
+#         # --- OR ---
+#         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#
+# Provider-specific behaviour:
+#   pages — standard upload-pages-artifact + deploy-pages flow (default)
+#   s3    — aws s3 sync to <bucket>/<owner>/<repo>/ (or deploy.s3.prefix)
+#
+# S3 authentication (in order of preference):
+#   1. OIDC role (AWS_ROLE_ARN secret) — recommended; no long-lived credentials
+#   2. Static credentials (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY)
+#
+# URL conventions:
+#   GitHub Pages: https://<owner>.github.io/<repo>/
+#   S3/CloudFront: https://slides.jenningsanderson.com/<owner>/<repo>/
+
+name: Build and Publish Slides
+
+on:
+  workflow_call:
+    inputs:
+      provider:
+        description: "Publish provider: 'pages' or 's3'"
+        required: false
+        default: 'pages'
+        type: string
+      slides-dir:
+        description: "Directory containing slide .md files and config.yaml"
+        required: false
+        default: 'slides'
+        type: string
+      output-dir:
+        description: "Output directory for the built presentation"
+        required: false
+        default: 'dist'
+        type: string
+      title:
+        description: "Presentation title — overrides config.yaml"
+        required: false
+        default: ''
+        type: string
+      base-url:
+        description: "Base URL for asset paths (e.g. /repo-name/)"
+        required: false
+        default: ''
+        type: string
+      s3-bucket:
+        description: "S3 bucket name (required when provider is s3)"
+        required: false
+        default: ''
+        type: string
+      s3-region:
+        description: "AWS region for the S3 bucket"
+        required: false
+        default: 'us-east-1'
+        type: string
+      s3-prefix:
+        description: "S3 key prefix; defaults to <owner>/<repo> when absent"
+        required: false
+        default: ''
+        type: string
+      cloudfront-distribution-id:
+        description: "CloudFront distribution ID for cache invalidation (optional)"
+        required: false
+        default: ''
+        type: string
+      aws-region:
+        description: "AWS region used for OIDC credential exchange (defaults to s3-region)"
+        required: false
+        default: ''
+        type: string
+    secrets:
+      AWS_ROLE_ARN:
+        description: "IAM role ARN for OIDC authentication (recommended for S3)"
+        required: false
+      AWS_ACCESS_KEY_ID:
+        description: "AWS access key ID (fallback static credentials for S3)"
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        description: "AWS secret access key (fallback static credentials for S3)"
+        required: false
+
+# Pages deployments require these permissions; S3 uses OIDC (id-token: write).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Build
+  # ──────────────────────────────────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      output-dir: ${{ steps.build-action.outputs.output-dir }}
+    steps:
+      - name: Checkout calling repository
+        uses: actions/checkout@v4
+
+      - name: Build slides
+        id: build-action
+        uses: jenningsanderson/slides@main
+        with:
+          slides-dir: ${{ inputs.slides-dir }}
+          output-dir: ${{ inputs.output-dir }}
+          title: ${{ inputs.title }}
+          base-url: ${{ inputs.base-url }}
+
+      # Upload as a Pages artifact unconditionally; deploy-pages job only runs
+      # when provider == pages.  The artifact is discarded if unused.
+      - name: Upload Pages artifact
+        if: ${{ inputs.provider == 'pages' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.output-dir }}
+
+      # Stash the build output as a plain artifact for the S3 job.
+      - name: Upload build artifact (for S3)
+        if: ${{ inputs.provider == 's3' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: slides-dist
+          path: ${{ inputs.output-dir }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Deploy — GitHub Pages
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy-pages:
+    if: ${{ inputs.provider == 'pages' }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Deploy — S3
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy-s3:
+    if: ${{ inputs.provider == 's3' }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: slides-dist
+          path: dist
+
+      # Authenticate via OIDC role (preferred — no long-lived credentials).
+      - name: Configure AWS credentials (OIDC)
+        if: ${{ secrets.AWS_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws-region || inputs.s3-region || 'us-east-1' }}
+
+      # Fall back to static key credentials when no OIDC role is configured.
+      - name: Configure AWS credentials (static keys)
+        if: ${{ secrets.AWS_ROLE_ARN == '' && secrets.AWS_ACCESS_KEY_ID != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region || inputs.s3-region || 'us-east-1' }}
+
+      - name: Determine S3 prefix
+        id: s3-prefix
+        run: |
+          PREFIX="${{ inputs.s3-prefix }}"
+          if [ -z "$PREFIX" ]; then
+            # Default: <owner>/<repo>
+            PREFIX="${GITHUB_REPOSITORY}"
+          fi
+          echo "prefix=${PREFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload HTML files (no-cache)
+        run: |
+          DEST="s3://${{ inputs.s3-bucket }}/${{ steps.s3-prefix.outputs.prefix }}/"
+          aws s3 sync dist/ "$DEST" \
+            --region "${{ inputs.s3-region }}" \
+            --cache-control "no-cache" \
+            --exclude "*" --include "*.html" \
+            --delete
+
+      - name: Upload static assets (immutable cache)
+        run: |
+          DEST="s3://${{ inputs.s3-bucket }}/${{ steps.s3-prefix.outputs.prefix }}/"
+          aws s3 sync dist/ "$DEST" \
+            --region "${{ inputs.s3-region }}" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "*.html"
+
+      - name: Invalidate CloudFront cache
+        if: ${{ inputs.cloudfront-distribution-id != '' }}
+        run: |
+          PREFIX="${{ steps.s3-prefix.outputs.prefix }}"
+          PATH_PATTERN="/${PREFIX}/*"
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ inputs.cloudfront-distribution-id }}" \
+            --paths "$PATH_PATTERN"
+
+      - name: Print published URL
+        run: |
+          PREFIX="${{ steps.s3-prefix.outputs.prefix }}"
+          echo "Published to: https://${{ inputs.s3-bucket }}/${PREFIX}/"

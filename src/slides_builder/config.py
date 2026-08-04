@@ -13,6 +13,16 @@ Config file format (all keys optional):
     serve:
       port: 3000
       no_open: false
+    deploy:
+      provider: pages        # pages | s3  (default: pages)
+      path_prefix: ""        # optional base path, provider-agnostic
+      s3:
+        bucket: slides.jenningsanderson.com
+        region: us-east-1
+        prefix: ""           # optional; derived from <owner>/<repo> when absent
+        cloudfront_distribution_id: ""
+        cache_control_html: "no-cache"
+        cache_control_assets: "public,max-age=31536000,immutable"
 """
 
 from __future__ import annotations
@@ -54,3 +64,68 @@ def resolve(cfg: dict, key: str, cli_value: Any, default: Any = None) -> Any:
     if key in cfg and cfg[key] is not None:
         return cfg[key]
     return default
+
+
+# ---------------------------------------------------------------------------
+# Deploy / publish config helpers
+# ---------------------------------------------------------------------------
+
+VALID_PROVIDERS = ("pages", "s3")
+
+
+def get_deploy_config(cfg: dict) -> dict:
+    """
+    Return the resolved deploy sub-config with defaults applied.
+
+    Returns a dict with at minimum:
+      { "provider": "pages", "path_prefix": "", "s3": { ... defaults ... } }
+    """
+    deploy = cfg.get("deploy") or {}
+    if not isinstance(deploy, dict):
+        deploy = {}
+
+    provider = deploy.get("provider") or "pages"
+    path_prefix = deploy.get("path_prefix") or ""
+
+    s3_defaults: dict = {
+        "bucket": "",
+        "region": "us-east-1",
+        "prefix": "",
+        "cloudfront_distribution_id": "",
+        "cache_control_html": "no-cache",
+        "cache_control_assets": "public,max-age=31536000,immutable",
+    }
+    s3_cfg = deploy.get("s3") or {}
+    if not isinstance(s3_cfg, dict):
+        s3_cfg = {}
+    merged_s3 = {**s3_defaults, **{k: v for k, v in s3_cfg.items() if v is not None}}
+
+    return {
+        "provider": provider,
+        "path_prefix": path_prefix,
+        "s3": merged_s3,
+    }
+
+
+def validate_deploy_config(deploy: dict) -> list[str]:
+    """
+    Validate the deploy config dict (as returned by get_deploy_config).
+    Returns a list of human-readable error strings (empty == valid).
+    """
+    errors: list[str] = []
+    provider = deploy.get("provider", "pages")
+
+    if provider not in VALID_PROVIDERS:
+        errors.append(
+            f"deploy.provider must be one of {VALID_PROVIDERS!r}, got {provider!r}"
+        )
+        return errors  # no point checking S3 keys if provider is unknown
+
+    if provider == "s3":
+        s3 = deploy.get("s3", {})
+        if not s3.get("bucket"):
+            errors.append("deploy.s3.bucket is required when provider is 's3'")
+        if not s3.get("region"):
+            errors.append("deploy.s3.region is required when provider is 's3'")
+
+    return errors

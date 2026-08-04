@@ -89,6 +89,11 @@ slides gif      COMMAND output.gif  [--title TEXT] [--width PX] [--height PX]
                 [--font-size PT] [--timer-ticks N] [--pause-before SEC]
                 [--pause-after-cmd SEC] [--final-hold SEC]
                 [--timeout SEC] [--max-lines N] [--dry-run]
+
+slides publish  [--slides-dir DIR] [--output-dir DIR]
+                [--provider pages|s3]
+                [--bucket BUCKET] [--prefix PREFIX]
+                [--dry-run]
 ```
 
 **Defaults:**
@@ -125,6 +130,19 @@ output: index.html            # where to write the built HTML
 serve:
   port: 3000
   no_open: false
+
+# Deploy / publish settings (optional — defaults to GitHub Pages)
+deploy:
+  provider: pages         # pages | s3  (default: pages)
+  path_prefix: ""         # optional; provider-agnostic base path
+
+  s3:
+    bucket: slides.jenningsanderson.com
+    region: us-east-1
+    prefix: ""            # optional; defaults to <owner>/<repo> from GITHUB_REPOSITORY
+    cloudfront_distribution_id: ""
+    cache_control_html: "no-cache"
+    cache_control_assets: "public,max-age=31536000,immutable"
 ```
 
 **Resolution order** (highest to lowest priority):
@@ -140,6 +158,8 @@ serve:
 The `config.py` module handles loading and resolution. Key functions:
 - `config.load(slides_dir)` → returns the parsed dict (empty dict if no config.yaml)
 - `config.resolve(cfg, key, cli_value, default)` → applies the priority chain
+- `config.get_deploy_config(cfg)` → returns resolved `deploy` sub-dict with defaults
+- `config.validate_deploy_config(deploy)` → returns list of error strings (empty = valid)
 
 ---
 
@@ -369,6 +389,7 @@ Most settings (title, output, serve port) belong in `config.yaml` rather than ac
 | `base-url` | _(empty)_ | Only needed for project Pages sites at `/repo-name/` |
 | `assets-dir` | `assets` | Copied to `output-dir/assets/` if present |
 | `extra-build-args` | _(empty)_ | Appended verbatim to `slides build` |
+| `provider` | `pages` | Informational: `pages` or `s3`; actual publish handled by `publish.yml` |
 
 ### Action output
 `output-dir` — absolute path to the built directory (use with `upload-pages-artifact`).
@@ -485,6 +506,55 @@ want a minimal install without the GIF dependencies: `uv sync --no-group dev`.
 **`demo-pages.yml`** — runs on push to `main` when `slides/`, `css/`, `src/`, or
 `action.yml` change. Self-referential: uses `jenningsanderson/slides@main` to build its
 own `slides/` directory and deploy to `https://jenningsanderson.github.io/slides/`.
+
+**`publish.yml`** — reusable workflow for consuming repositories. Supports both providers:
+- `provider: pages` → `upload-pages-artifact` + `deploy-pages` (default)
+- `provider: s3` → `aws s3 sync` with OIDC or static-key auth, optional CloudFront invalidation
+
+S3 URL convention: `https://<bucket>/<owner>/<repo>/` (prefix derived from `GITHUB_REPOSITORY`
+unless overridden by `deploy.s3.prefix` in config.yaml or the `s3-prefix` workflow input).
+
+---
+
+## Publish / deploy architecture
+
+Build and publish concerns are separated:
+
+| Concern | Module / file |
+|---|---|
+| Build static files | `build.py` → `slides build` |
+| Deploy to Pages | CI workflow (`publish.yml` `deploy-pages` job) |
+| Deploy to S3 | `publish.py` + CI workflow (`publish.yml` `deploy-s3` job) |
+
+`slides publish` (local) validates config and, for S3, calls `aws s3 sync` directly.
+In CI, the workflow handles the deploy steps; `slides publish --provider pages` prints
+instructions and validates the output directory but does not call the Pages API.
+
+### Using `slides publish` locally
+
+```bash
+# GitHub Pages — validates output, summarises what CI will deploy
+uv run slides publish --output-dir dist
+
+# S3 — uploads immediately (requires AWS credentials on PATH)
+uv run slides publish --provider s3 --output-dir dist \
+  --bucket slides.jenningsanderson.com
+
+# Dry-run (print what would happen)
+uv run slides publish --provider s3 --dry-run
+```
+
+### Config-driven publish (config.yaml)
+
+```yaml
+deploy:
+  provider: s3
+  s3:
+    bucket: slides.jenningsanderson.com
+    region: us-east-1
+    prefix: myorg/myrepo          # optional; defaults to GITHUB_REPOSITORY
+    cloudfront_distribution_id: EXXXXXXXXXXXXX
+```
 
 ---
 
